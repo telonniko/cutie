@@ -1,0 +1,8 @@
+# Cubie scrambled-position test file
+# Standard Singmaster notation, applied in order to a SOLVED cube to reach
+# this scrambled state. Lines beginning with '#' and blank lines are ignored.
+#
+# Faces: U D L R F B    Suffix: '' = counter-clockwise quarter, '2' = half turn
+#
+# An alternate medium-length scramble.
+R2 U L D' B D2 F2 L2 U2 B' L2 D2 F R U2 B' R2 F2 R F'

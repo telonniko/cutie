@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cutie — 3D Rubik's Cube Solver</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #canvas-wrap { position: fixed; inset: 0; }
+  /* Slider styling */
+  input[type=range] { accent-color: #38bdf8; }
+  /* Custom scrollbar for the move log */
+  .scroll-thin::-webkit-scrollbar { width: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+  /* Fade-in for panels */
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .fadein { animation: fadein .25s ease; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <!-- 3D viewport -->
+  <div id="canvas-wrap"></div>
+
+  <!-- ======================= Top bar ======================= -->
+  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none">
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="grid grid-cols-3 gap-0.5">
+            <span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-yellow-400"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-blue-500"></span>
+            <span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-orange-500"></span>
+            <span class="w-2.5 h-2.5 rounded-[3px] bg-red-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span>
+          </div>
+          <div>
+            <h1 class="text-sm font-semibold tracking-wide">Cutie</h1>
+            <p class="text-[11px] text-slate-400 -mt-0.5">3D Rubik's Cube Solver</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status indicator -->
+      <div id="status-pill" class="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
+        <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+        <span id="status-text" class="text-sm font-medium">Solved</span>
+        <span class="mx-1 h-4 w-px bg-white/10"></span>
+        <span class="text-xs text-slate-400">Moves</span>
+        <span id="move-counter" class="text-sm font-semibold tabular-nums">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================= Right control panel ======================= -->
+  <aside class="fixed right-4 top-16 bottom-4 z-20 w-72 max-w-[320px] flex flex-col gap-3 pointer-events-none">
+    <!-- Status / log card -->
+    <section class="pointer-events-auto flex-1 min-h-0 flex flex-col rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Move Log</h2>
+        <span id="log-count" class="text-[11px] text-slate-500">0 moves</span>
+      </div>
+      <div id="move-log" class="scroll-thin flex-1 overflow-y-auto px-3 py-2 text-sm">
+        <p id="log-empty" class="text-slate-500 text-xs leading-relaxed px-1 py-1">
+          No moves yet. Use the buttons or keyboard to turn faces, then <b class="text-slate-300">Solve</b> to watch it come back.
+        </p>
+        <ol id="log-list" class="space-y-0.5"></ol>
+      </div>
+    </section>
+
+    <!-- Speed -->
+    <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl px-4 py-3">
+      <div class="flex items-center justify-between mb-2">
+        <label for="speed" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Animation speed</label>
+        <span id="speed-val" class="text-xs text-slate-400 tabular-nums">1.0×</span>
+      </div>
+      <input id="speed" type="range" min="0.1" max="3" step="0.1" value="1"
+             class="w-full" />
+      <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Fast</span><span>Slow</span></div>
+    </section>
+
+    <!-- Load scrambled file -->
+    <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl px-4 py-3">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Load Scramble</h2>
+      </div>
+      <input id="scramble-file" type="file" accept=".txt,.cubetext,.alg" class="hidden" />
+      <button id="btn-load" class="w-full rounded-lg bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2 text-xs font-medium transition">Load a scramble file…</button>
+      <p class="text-[10px] text-slate-500 mt-2">Pick a <code class="text-slate-400">.txt</code> / <code class="text-slate-400">.cubetext</code> / <code class="text-slate-400">.alg</code> of move notation (e.g. <code class="text-slate-400">U R2 F' D</code>).</p>
+    </section>
+
+    <!-- Primary actions -->
+    <section class="pointer-events-auto grid grid-cols-2 gap-2">
+      <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
+      <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Solve</button>
+      <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">Step →</button>
+      <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">← Step</button>
+      <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Reset</button>
+    </section>
+  </aside>
+
+  <!-- ======================= Face buttons (bottom-left) ======================= -->
+  <div class="fixed left-4 bottom-4 z-20 pointer-events-none">
+    <div class="rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3 fadein">
+      <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Turn a layer <span class="text-slate-600 normal-case">(drag the view to orbit)</span></p>
+      <div id="face-buttons" class="grid grid-cols-6 gap-1.5"></div>
+      <p class="text-[10px] text-slate-600 mt-2">Click a face = clockwise · Shift+face = counter-clockwise · double = 180°</p>
+    </div>
+  </div>
+
+  <!-- ======================= Solver loading toast ======================= -->
+  <div id="solver-toast" class="fixed left-1/2 bottom-6 -translate-x-1/2 z-30 hidden">
+    <div class="flex items-center gap-2 rounded-xl bg-slate-900/90 backdrop-blur-md ring-1 ring-white/10 px-4 py-2.5 shadow-2xl">
+      <div class="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-sm text-slate-200">Warming up the solver…</span>
+    </div>
+  </div>
+
+  <!-- Drag-to-rotate hint on the canvas -->
+  <div id="drag-hint" class="fixed left-4 top-16 z-20 pointer-events-none">
+    <div class="rounded-xl bg-slate-900/60 backdrop-blur ring-1 ring-white/10 px-3 py-1.5 text-[11px] text-slate-400">
+      Drag to orbit · Scroll to zoom
+    </div>
+  </div>
+
+  <!-- Inline cubejs scripts attach `window.Cube` (IIFE, not a CommonJS build). -->
+  <script src="https://cdn.jsdelivr.net/npm/cubejs@1.3.2/lib/cube.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cubejs@1.3.2/lib/solve.js"></script>
+
+  <script>
+  "use strict";
+  /* ============================================================================
+   *  CUBE CORE — the framework-free mathematical model of the cube.
+   *
+   *  This block (between the CUBE:START and CUBE:END sentinels) is also
+   *  extracted and unit-tested by tools/verify.js against cubejs, which proves
+   *  the 3D geometry matches the solver exactly.
+   * ==========================================================================*/
+  // === CUBE:START ===
+  const FACE_LETTERS = ['U', 'D', 'L', 'R', 'F', 'B'];
+
+  // Six axis directions a face can point along.
+  const DIRS = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  const DIR_TO_COLOR = {'1,0,0':'R','-1,0,0':'L','0,1,0':'U','0,-1,0':'D','0,0,1':'F','0,0,-1':'B'};
+  const FACE_COLORS = { U:0xf8fafc, D:0xfacc15, F:0x2563eb, B:0x16a34a, L:0xea580c, R:0xdc2626 };
+
+  // A move: which axis the layer rotates about, the layer's fixed coordinate,
+  // and the handedness of one clockwise step. (Verified against cubejs.)
+  const MOVES = {
+    U: { axis: 1, layer:  1, sign: -1 },
+    D: { axis: 1, layer: -1, sign:  1 },
+    R: { axis: 0, layer:  1, sign: -1 },
+    L: { axis: 0, layer: -1, sign:  1 },
+    F: { axis: 2, layer:  1, sign: -1 },
+    B: { axis: 2, layer: -1, sign:  1 },
+  };
+  const AXIS_DIRS = { 0:[1,0,0], 1:[0,1,0], 2:[0,0,1] };
+
+  // Face block base index (0..45) for a normal, in cubejs face order U,R,F,D,L,B.
+  const FACE_OF = {'0,1,0':0,'1,0,0':9,'0,0,1':18,'0,-1,0':27,'-1,0,0':36,'0,0,-1':45};
+
+  // Rotate a vector 90° about the given axis by `sign` steps (right-hand rule).
+  function rotateVector(axis, v, sign) {
+    if (axis === 0) return sign > 0 ? [v[0],-v[2], v[1]] : [v[0], v[2],-v[1]];
+    if (axis === 1) return sign > 0 ? [ v[2], v[1],-v[0]] : [-v[2], v[1], v[0]];
+    return sign > 0 ? [-v[1], v[0], v[2]] : [ v[1],-v[0], v[2]];
+  }
+  const k = v => v.join(',');
+
+  // Build the 26 visible cubies (the center core has no colored faces).
+  function buildCubies() {
+    const cubies = [];
+    for (let x = -1; x <= 1; x++)
+      for (let y = -1; y <= 1; y++)
+        for (let z = -1; z <= 1; z++) {
+          const faces = [];
+          for (const d of DIRS) {
+            const exposed = (d[0]*x + d[1]*y + d[2]*z) === 1;
+            faces.push({ dir: [...d], color: exposed ? DIR_TO_COLOR[k(d)] : null });
+          }
+          cubies.push({ pos: [x,y,z], home: [x,y,z], faces });
+        }
+    return cubies;
+  }
+
+  // (x,y,z) -> cell index (0..8) within a given face block, matching cubejs layout.
+  function slotFor(face, x, y, z) {
+    let r, c;
+    switch (face) {
+      case 0:  r = z+1; c = x+1; break;  // U
+      case 9:  r = 1-y; c = 1-z; break;  // R
+      case 18: c = x+1; r = 1-y; break;  // F
+      case 27: r = 1-z; c = x+1; break;  // D
+      case 36: r = 1-y; c = z+1; break;  // L
+      case 45: c = 1-x; r = 1-y; break;  // B
+    }
+    return 3*r + c;
+  }
+
+  // Parse a notation string into [{face, power}] (power 0/1/2).
+  function parseAlg(str) {
+    const out = [];
+    // Iterate line by line so whole-line comments (lines starting with '#') and
+    // blank lines are ignored — matches the Cubie scramble-file header format.
+    for (const raw of String(str).split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line[0] === '#') continue;
+      for (const t of line.split(/\s+/)) {
+        if (!t) continue;
+        const mod = t.slice(1);
+        out.push({ face: t[0], power: mod === '2' ? 1 : (mod === "'" ? 2 : 0) });
+      }
+    }
+    return out;
+  }
+  function invertAlg(str) {
+    return parseAlg(str).map(m => ({ face: m.face, power: m.power === 1 ? 1 : (m.power === 0 ? 2 : 0) }))
+      .reverse()
+      .map(m => m.face + (m.power === 1 ? '2' : (m.power === 2 ? "'" : ''))).join(' ');
+  }
+
+  // Apply one ±90° step of a move to the moving layer (mutates cubies).
+  function applyStep(cubies, move, sign) {
+    for (const c of cubies) {
+      if (c.pos[move.axis] !== move.layer) continue;
+      c.pos = rotateVector(move.axis, c.pos, sign);
+      for (const f of c.faces) f.dir = rotateVector(move.axis, f.dir, sign);
+      c.pos = c.pos.map(Math.round);
+      for (const f of c.faces) f.dir = f.dir.map(Math.round);
+    }
+  }
+  // Apply a full move honoring power (0 = once, 1 = twice, 2 = prime).
+  function applyMove(cubies, face, power = 0) {
+    const base = MOVES[face];
+    if (!base) return;
+    const reps = power === 1 ? 2 : (power === 2 ? -1 : 1);
+    const sign = base.sign * (reps > 0 ? 1 : -1);
+    for (let i = 0; i < Math.abs(reps); i++) applyStep(cubies, base, sign);
+  }
+  function applyAlg(cubies, alg) { for (const { face, power } of parseAlg(alg)) applyMove(cubies, face, power); }
+
+  const isOuter = (dir, pos) => dir[0]*pos[0] + dir[1]*pos[1] + dir[2]*pos[2] === 1;
+  const SOLVED = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+
+  // Read the 54-char facelet string (cubejs frame) from the cubie model.
+  function readFaceletString(cubies) {
+    const out = new Array(54).fill('.');
+    for (const c of cubies)
+      for (const f of c.faces) {
+        if (!f.color || !isOuter(f.dir, c.pos)) continue;
+        const block = FACE_OF[k(f.dir)];
+        out[block + slotFor(block, c.pos[0], c.pos[1], c.pos[2])] = f.color;
+      }
+    return out.join('');
+  }
+  const isSolved = cubies => readFaceletString(cubies) === SOLVED;
+
+  // Expose the pure-model API (used by tools/verify.js in Node; harmless in the
+  // browser). `const` declarations don't become properties of the global, so we
+  // surface them explicitly.
+  self.CubeCore = { buildCubies, applyMove, applyAlg, readFaceletString, isSolved, parseAlg, MOVES };
+  // === CUBE:END ===
+
+  /* ------------------------------------------------------------------------ *
+   *  THREE.JS SCENE                                                           *
+   * ---------------------------------------------------------------------- */
+  const wrap = document.getElementById('canvas-wrap');
+
+  const scene = new THREE.Scene();
+
+  // Scene clear color. Chosen to read as a soft dark "vignette" behind the
+  // cube (matches the page's slate-950 theme closely). The page's solid
+  // background + the cube together give the full-window look.
+  const BG = new THREE.Color(0x0f172a);
+  scene.background = BG;
+
+  const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 100);
+  const HOME_POS = new THREE.Vector3(6.5, 5.5, 8.5);
+  camera.position.copy(HOME_POS);
+
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    // Keep the drawing buffer so screenshots (and pixel reads in headless
+    // tests) capture a rendered frame instead of a cleared one.
+    preserveDrawingBuffer: true,
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  wrap.appendChild(renderer.domElement);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const key = new THREE.DirectionalLight(0xffffff, 1.05);
+  key.position.set(8, 12, 9);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 1; key.shadow.camera.far = 40;
+  key.shadow.camera.left = -6; key.shadow.camera.right = 6;
+  key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
+  key.shadow.bias = -0.0002;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x88aaff, 0.35);
+  fill.position.set(-6, -4, -8);
+  scene.add(fill);
+
+  // Soft ground for a drop shadow.
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(60, 60),
+    new THREE.ShadowMaterial({ opacity: 0.28 })
+  );
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -3.4;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // The cube lives in this group (kept at the origin so layer turns rotate
+  // about the world axes through the center).
+  const cubeGroup = new THREE.Group();
+  scene.add(cubeGroup);
+
+  // --- Rounded-box geometry helper (reproduces three's RoundedBoxGeometry) ---
+  function roundedBoxGeometry(w, h, d, radius, segments) {
+    const geo = new THREE.BoxGeometry(w, h, d, segments, segments, segments);
+    const pos = geo.attributes.position;
+    const hw = w/2, hh = h/2, hd = d/2;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const cx = THREE.MathUtils.clamp(v.x, -hw + radius, hw - radius);
+      const cy = THREE.MathUtils.clamp(v.y, -hh + radius, hh - radius);
+      const cz = THREE.MathUtils.clamp(v.z, -hd + radius, hd - radius);
+      const n = new THREE.Vector3(v.x - cx, v.y - cy, v.z - cz);
+      if (n.lengthSq() < 1e-12) { pos.setXYZ(i, cx, cy, cz); continue; }
+      n.normalize().multiplyScalar(radius);
+      pos.setXYZ(i, cx + n.x, cy + n.y, cz + n.z);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  const baseGeo = roundedBoxGeometry(1.0, 1.0, 1.0, 0.11, 4);
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x0d1117, roughness: 0.45, metalness: 0.15 });
+  const stickerGeo = roundedBoxGeometry(0.86, 0.86, 0.1, 0.05, 3);
+  const stickerMats = {};
+  for (const [name, hex] of Object.entries(FACE_COLORS))
+    stickerMats[name] = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.32, metalness: 0.05 });
+
+  // Build the 26 cubies and their meshes.
+  const cubies = buildCubies();
+  const parts = []; // { data, mesh }
+  const v3 = a => new THREE.Vector3(a[0], a[1], a[2]);
+
+  for (const data of cubies) {
+    const mesh = new THREE.Mesh(baseGeo, baseMat);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.position.set(data.home[0], data.home[1], data.home[2]);
+    // Add a sticker child for every outward-facing face.
+    for (const f of data.faces) {
+      if (!f.color) continue;
+      const dir = v3(f.dir);
+      const sticker = new THREE.Mesh(stickerGeo, stickerMats[f.color]);
+      // Point the sticker's local +z axis along the face normal.
+      sticker.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), dir);
+      sticker.position.copy(dir).multiplyScalar(0.5);
+      sticker.castShadow = true;
+      mesh.add(sticker);
+    }
+    cubeGroup.add(mesh);
+    parts.push({ data, mesh });
+  }
+
+  // The cubie's body quaternion = the rotation implied by its 3 local axes
+  // (+x, +y, +z face dirs). Keeps every cubie exactly 90°-aligned, no drift.
+  const bodyQuat = data => {
+    const m = new THREE.Matrix4().makeBasis(
+      v3(data.faces[0].dir), v3(data.faces[2].dir), v3(data.faces[4].dir)
+    );
+    return new THREE.Quaternion().setFromRotationMatrix(m);
+  };
+
+  /* ------------------------------------------------------------------------ *
+   *  ORBIT CONTROLS (custom, minimal)                                         *
+   * ---------------------------------------------------------------------- */
+  class Orbit {
+    constructor(cam, el) {
+      this.cam = cam; this.el = el;
+      this.target = new THREE.Vector3(0,0,0);
+      this.spherical = new THREE.Spherical().setFromVector3(cam.position.clone().sub(this.target));
+      this.minR = 6; this.maxR = 22;
+      this.minP = 0.15; this.maxP = Math.PI - 0.15;
+      this.damp = 0.12;
+      this.thetaTarget = this.spherical.theta;
+      this.phiTarget = this.spherical.phi;
+      this.radiusTarget = this.spherical.radius;
+      this.dragging = false; this.last = null;
+      this.onChanged = null;
+      el.addEventListener('pointerdown', e => this.down(e));
+      addEventListener('pointermove', e => this.move(e));
+      addEventListener('pointerup', () => this.up());
+      el.addEventListener('wheel', e => { e.preventDefault(); this.zoom(e); }, { passive: false });
+      // touch pinch zoom
+      this.pointers = new Map();
+      el.addEventListener('touchstart', e => { for (const p of e.touches) this.pointers.set(p.identifier, [p.clientX, p.clientY]); }, { passive: true });
+      el.addEventListener('touchmove', e => { e.preventDefault(); this.pinch(e); }, { passive: false });
+      el.addEventListener('touchend', e => { this.pointers.clear(); });
+    }
+    down(e) { this.dragging = true; this.last = [e.clientX, e.clientY]; this.el.setPointerCapture?.(e.pointerId); this.el.style.cursor = 'grabbing'; }
+    up() { this.dragging = false; this.last = null; this.el.style.cursor = 'grab'; }
+    move(e) {
+      if (!this.dragging || !this.last) return;
+      const dx = e.clientX - this.last[0], dy = e.clientY - this.last[1];
+      this.last = [e.clientX, e.clientY];
+      const scale = 0.005 * this.spherical.radius * 0.12;
+      this.thetaTarget -= dx * scale;
+      this.phiTarget   -= dy * scale;
+      this.phiTarget = THREE.MathUtils.clamp(this.phiTarget, this.minP, this.maxP);
+    }
+    zoom(e) {
+      const f = Math.exp(e.deltaY * 0.0012);
+      this.radiusTarget = THREE.MathUtils.clamp(this.radiusTarget * f, this.minR, this.maxR);
+    }
+    pinch(e) {
+      const pts = [...e.touches];
+      if (pts.length === 1) {
+        // single-finger orbit
+        const prev = this.pointers.get(pts[0].identifier);
+        if (prev) {
+          const dx = pts[0].clientX - prev[0], dy = pts[0].clientY - prev[1];
+          const scale = 0.005 * this.spherical.radius * 0.12;
+          this.thetaTarget -= dx * scale;
+          this.phiTarget = THREE.MathUtils.clamp(this.phiTarget - dy * scale, this.minP, this.maxP);
+        }
+        this.pointers.set(pts[0].identifier, [pts[0].clientX, pts[0].clientY]);
+      } else if (pts.length >= 2) {
+        const a = this.pointers.get(pts[0].identifier), b = this.pointers.get(pts[1].identifier);
+        if (a && b) {
+          const prev = Math.hypot(a[0]-b[0], a[1]-b[1]);
+          const now = Math.hypot(pts[0].clientX-pts[1].clientX, pts[0].clientY-pts[1].clientY);
+          if (prev > 0) this.radiusTarget = THREE.MathUtils.clamp(this.radiusTarget * (prev/now), this.minR, this.maxR);
+        }
+        this.pointers.set(pts[0].identifier, [pts[0].clientX, pts[0].clientY]);
+        this.pointers.set(pts[1].identifier, [pts[1].clientX, pts[1].clientY]);
+      }
+    }
+    setView(preset) {
+      const p = HOME_POS;
+      const s = new THREE.Spherical().setFromVector3(p.clone().sub(this.target));
+      if (preset) { this.thetaTarget = p.theta; this.phiTarget = p.phi; this.radiusTarget = p.radius; }
+    }
+    update() {
+      // ease toward targets
+      const t = this.thetaTarget - this.spherical.theta;
+      const ph = this.phiTarget - this.spherical.phi;
+      const rr = this.radiusTarget - this.spherical.radius;
+      this.spherical.theta += t * this.damp;
+      this.spherical.phi = THREE.MathUtils.clamp(this.spherical.phi + ph * this.damp, this.minP, this.maxP);
+      this.spherical.radius += rr * this.damp;
+      const offset = new THREE.Vector3().setFromSpherical(this.spherical);
+      this.cam.position.copy(this.target).add(offset);
+      this.cam.lookAt(this.target);
+      if (this.onChanged) this.onChanged();
+    }
+  }
+  const controls = new Orbit(camera, renderer.domElement);
+  renderer.domElement.style.cursor = 'grab';
+
+  /* ------------------------------------------------------------------------ *
+   *  APP STATE + ANIMATION                                                    *
+   * ---------------------------------------------------------------------- */
+  const state = {
+    moves: [],          // move tokens executed this session (for the log)
+    busy: false,        // true while any move is queued/animating
+    solving: false,
+    current: null,      // active animation object
+    queue: [],          // pending animations
+    speed: 1,           // 1 = normal; higher = faster
+    counter: 0,
+    status: 'Solved',
+  };
+  let solverReady = false;
+
+  // Durations scale with the speed slider.
+  function moveDuration(power) {
+    const base = 0.55 / state.speed; // seconds for a 90° turn at 1x
+    return base * (power === 1 ? 1.35 : 1);
+  }
+  const easeInOut = t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
+
+  const statusText = document.getElementById('status-text');
+  const statusDot = document.getElementById('status-dot');
+  const counterEl = document.getElementById('move-counter');
+  const toast = document.getElementById('solver-toast');
+
+  function setStatus(text, kind) {
+    state.status = text;
+    statusText.textContent = text;
+    const colors = {
+      solved: 'bg-emerald-400', scrambled: 'bg-sky-400', solving: 'bg-amber-400',
+      busy: 'bg-amber-400', idle: 'bg-slate-400',
+    };
+    statusDot.className = 'w-2.5 h-2.5 rounded-full ' + (colors[kind] || 'bg-slate-400');
+  }
+
+  // --- The move log ---
+  const logList = document.getElementById('log-list');
+  const logEmpty = document.getElementById('log-empty');
+  const logCount = document.getElementById('log-count');
+  let highlighted = -1;
+
+  function renderLog(highlightIndex) {
+    const n = state.moves.length;
+    logCount.textContent = n + (n === 1 ? ' move' : ' moves');
+    logEmpty.style.display = n ? 'none' : 'block';
+    if (highlighted !== -1) {
+      const prev = logList.querySelector('.log-current');
+      if (prev) prev.className = prev.className.replace('log-current ', '');
+    }
+    logList.innerHTML = '';
+    state.moves.forEach((mv, i) => {
+      const li = document.createElement('li');
+      const isCurrent = i === highlightIndex;
+      li.className = 'flex items-center gap-2 px-2 py-1 rounded-md text-xs ' +
+        (isCurrent ? 'log-current bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/40' :
+                     (i < highlightIndex ? 'text-slate-500' : 'text-slate-200'));
+      const badge = document.createElement('span');
+      badge.className = 'w-10 text-right tabular-nums text-slate-500';
+      badge.textContent = (i + 1) + '.';
+      const mvEl = document.createElement('span');
+      mvEl.className = 'font-mono text-sm ' + (isCurrent ? '' : '');
+      mvEl.textContent = mv;
+      const stateMark = document.createElement('span');
+      stateMark.className = 'ml-auto text-[10px] text-slate-600';
+      stateMark.textContent = i < highlightIndex ? '✓' : (isCurrent ? '▶' : '');
+      li.append(badge, mvEl, stateMark);
+      logList.appendChild(li);
+    });
+    if (highlightIndex >= 0) {
+      const cur = logList.querySelector('.log-current');
+      if (cur) cur.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // --- Move execution ---
+  function recordMove(token) {
+    state.moves.push(token);
+    state.counter++;
+    counterEl.textContent = state.counter;
+  }
+
+  function buildAnim(face, power) {
+    const move = MOVES[face];
+    const reps = power === 1 ? 2 : (power === 2 ? -1 : 1);
+    const totalAngle = move.sign * reps * (Math.PI / 2);
+    const axisVec = v3(AXIS_DIRS[move.axis]);
+    return {
+      face, power, move, totalAngle, axisVec,
+      elapsed: 0, duration: moveDuration(power),
+      moving: null, // captured lazily at animation start (see startCurrent)
+    };
+  }
+
+  function queueMove(face, power = 0, { record = true } = {}) {
+    const token = face + (power === 1 ? '2' : (power === 2 ? "'" : ''));
+    if (record) recordMove(token);
+    state.queue.push(buildAnim(face, power));
+    if (!state.busy) { state.busy = true; startCurrent(); }
+  }
+
+  function startCurrent() {
+    if (!state.queue.length) { finishBatch(); return; }
+    const a = state.queue.shift();
+    state.current = a;
+    a.elapsed = 0;
+    // Capture the moving layer + each cubie's start transform NOW, from the live
+    // model and meshes. In a batch the earlier moves have already advanced the
+    // model and snapped the meshes, so the layer membership and start orientation
+    // for THIS move differ from what they were when it was queued.
+    a.moving = parts.filter(p => p.data.pos[a.move.axis] === a.move.layer)
+      .map(p => ({ part: p, startPos: p.mesh.position.clone(), startQuat: p.mesh.quaternion.clone() }));
+    // highlight the newest move in the log
+    renderLog(state.moves.length - 1);
+    if (!state.solving) setStatus('Turning…', 'busy');
+  }
+
+  function finishMove(anim) {
+    // Snap the model (integer-exact) and the meshes to the final state.
+    applyMove(cubies, anim.face, anim.power);
+    for (const { part } of anim.moving) {
+      part.mesh.position.set(part.data.pos[0], part.data.pos[1], part.data.pos[2]);
+      part.mesh.quaternion.copy(bodyQuat(part.data));
+    }
+    state.current = null;
+    if (state.queue.length) startCurrent();
+    else finishBatch();
+  }
+
+  function finishBatch() {
+    state.busy = false;
+    if (state.solving) {
+      state.solving = false;
+      renderLog(state.moves.length - 1);
+      if (isSolved(cubies)) { setStatus('Solved', 'solved'); }
+      else { setStatus('Solved (best effort)', 'solved'); }
+    } else {
+      updateIdleStatus();
+    }
+  }
+
+  function updateIdleStatus() {
+    if (isSolved(cubies)) setStatus('Solved', 'solved');
+    else if (state.moves.length) setStatus('Scrambled', 'scrambled');
+    else setStatus('Solved', 'solved');
+  }
+
+  // The per-frame animation update.
+  function updateAnimation(dt) {
+    if (!state.current) return;
+    const a = state.current;
+    a.elapsed += dt;
+    const t = Math.min(1, a.elapsed / a.duration);
+    const angle = easeInOut(t) * a.totalAngle;
+    const R = new THREE.Quaternion().setFromAxisAngle(a.axisVec, angle);
+    for (const { part, startPos, startQuat } of a.moving) {
+      part.mesh.position.copy(startPos).applyQuaternion(R);
+      part.mesh.quaternion.copy(R).multiply(startQuat);
+    }
+    if (t >= 1) finishMove(a);
+  }
+
+  // --- High-level actions ---
+  function userTurn(face, power) {
+    if (state.busy) return;
+    queueMove(face, power);
+  }
+
+  function scramble() {
+    if (state.busy) return;
+    const faces = FACE_LETTERS;
+    const mods = ['', '2', "'"];
+    const seq = [];
+    let last = null;
+    const N = 20;
+    for (let i = 0; i < N; i++) {
+      let f;
+      do { f = faces[Math.floor(Math.random()*6)]; } while (f === last);
+      last = f;
+      seq.push(f + mods[Math.floor(Math.random()*3)]);
+    }
+    resetMoves();
+    setStatus('Scrambling…', 'busy');
+    for (const token of parseAlg(seq.join(' '))) queueMove(token.face, token.power, { record: true });
+    // queueMove already kicked off startCurrent() (busy was false), so the
+    // animation runs. Re-assert the batch status after startCurrent's "Turning…".
+    if (state.busy) setStatus('Scrambling…', 'busy');
+  }
+
+  function resetCube() {
+    // Cancel any animation, restore the solved state instantly.
+    state.queue = []; state.current = null; state.busy = false; state.solving = false;
+    const fresh = buildCubies();
+    for (let i = 0; i < cubies.length; i++) {
+      cubies[i].pos = [...fresh[i].pos];
+      cubies[i].home = [...fresh[i].home];
+      for (let j = 0; j < 6; j++) cubies[i].faces[j].dir = [...fresh[i].faces[j].dir];
+      parts[i].mesh.position.set(cubies[i].pos[0], cubies[i].pos[1], cubies[i].pos[2]);
+      parts[i].mesh.quaternion.identity();
+    }
+    resetMoves();
+    updateIdleStatus();
+  }
+
+  function resetMoves() {
+    state.moves = []; state.counter = 0; highlighted = -1;
+    counterEl.textContent = '0';
+    renderLog(-1);
+  }
+
+  // Solve using cubejs. Rebuilds the cubejs state from the 3D model, asks for
+  // a solution, then animates it move-by-move.
+  async function solve() {
+    if (state.busy) return;
+    if (!solverReady) await waitForSolver();
+    if (isSolved(cubies)) { setStatus('Already solved', 'solved'); return; }
+    const cj = window.Cube.fromString(readFaceletString(cubies));
+    const solution = cj.solve(); // e.g. "R U R' U' ..."
+    const tokens = parseAlg(solution);
+    if (!tokens.length) { setStatus('Already solved', 'solved'); return; }
+    resetMoves();
+    state.solving = true;
+    setStatus('Solving…', 'solving');
+    // queueMove drives startCurrent() itself (busy was false), which animates the
+    // solution. Re-assert the batch status after startCurrent's "Turning…".
+    for (const { face, power } of tokens) queueMove(face, power, { record: true });
+    if (state.busy) setStatus('Solving…', 'solving');
+  }
+
+  // Load a scramble from its move-notation text (read from a user-picked file).
+  function loadScrambleText(text) {
+    if (state.busy) return;
+    resetCube();
+    const tokens = parseAlg(text);
+    if (!tokens.length) { toastMsg('No valid moves found in that file (expected notation like U R2 F2 D).'); return; }
+    setStatus('Scrambling…', 'busy');
+    for (const { face, power } of tokens) queueMove(face, power, { record: true });
+    // See note in scramble(): queueMove drives startCurrent() itself.
+    if (state.busy) setStatus('Scrambling…', 'busy');
+  }
+
+  // Single “Load” button opens a native file picker; we read the chosen file
+  // locally (no network / no CORS, so it works over file:// too). Wiring is in
+  // the button-binding section below, next to the other button handlers.
+  const scrambleFile = document.getElementById('scramble-file');
+  scrambleFile.addEventListener('change', async () => {
+    const file = scrambleFile.files[0];
+    scrambleFile.value = ''; // allow re-picking the same file next time
+    if (!file) return;
+    try {
+      const text = await file.text();
+      loadScrambleText(text);
+    } catch (err) {
+      console.warn('Could not read scramble file', file.name, err);
+      toastMsg('Could not read ' + file.name + ': ' + err.message);
+    }
+  });
+
+  let toastTimer;
+  function toastMsg(msg) {
+    toast.querySelector('span:last-child').textContent = msg;
+    toast.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.add('hidden'), 4000);
+  }
+
+  // --- Face buttons ---
+  const faceBtnWrap = document.getElementById('face-buttons');
+  for (const f of FACE_LETTERS) {
+    const b = document.createElement('button');
+    b.textContent = f;
+    b.dataset.face = f;
+    b.title = f + ' layer';
+    b.className = 'rounded-lg py-2 text-sm font-semibold bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 transition ' +
+      (FACE_COLORS[f] ? '' : '');
+    b.addEventListener('click', e => {
+      const prime = e.shiftKey || e.metaKey;
+      userTurn(f, prime ? 2 : 0);
+    });
+    b.addEventListener('dblclick', () => userTurn(f, 1));
+    faceBtnWrap.appendChild(b);
+  }
+
+  // --- Primary buttons ---
+  document.getElementById('btn-scramble').onclick = scramble;
+  document.getElementById('btn-solve').onclick = () => solve();
+  document.getElementById('btn-reset').onclick = resetCube;
+  document.getElementById('btn-stepfwd').onclick = stepForward;
+  document.getElementById('btn-stepbwd').onclick = stepBackward;
+  document.getElementById('btn-load').onclick = () => scrambleFile.click();
+
+  const speed = document.getElementById('speed');
+  const speedVal = document.getElementById('speed-val');
+  speed.addEventListener('input', () => {
+    // slider is "fast→slow": higher slider value = slower
+    state.speed = 1 / (parseFloat(speed.value));
+    speedVal.textContent = (1/state.speed >= 1 ? (1/state.speed).toFixed(1) : (1/state.speed).toFixed(2)) + '×';
+  });
+
+  // --- Keyboard shortcuts ---
+  const KEY = { ' ': 'solve', s: 'scramble', r: 'reset', f: 'fwd', b: 'bwd',
+                u: 'U', d: 'D', l: 'L', r2: 'R', f2: 'F', b2: 'B' };
+  addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea')) return;
+    if (e.key === 'ArrowRight') { stepForward(); e.preventDefault(); return; }
+    if (e.key === 'ArrowLeft')  { stepBackward(); e.preventDefault(); return; }
+    const face = e.key.toUpperCase();
+    if (['U','D','L','R','F','B'].includes(face) && !e.repeat) {
+      userTurn(face, e.shiftKey ? 2 : 0);
+      return;
+    }
+    const k = e.key.toLowerCase();
+    if (k === ' ' || e.code === 'Space') { solve(); e.preventDefault(); return; }
+    if (k === 's') scramble();
+    else if (k === 'r') resetCube();
+    else if (k === 'f') stepForward();
+    else if (k === 'b') stepBackward();
+  });
+
+  // Step forward / backward through a queued solve/scramble sequence.
+  let autoPlaying = true;
+  function stepForward() {
+    // If idle with a solve queued (paused), advance one move.
+    if (!state.busy && state.queue.length) {
+      state.busy = true; startCurrent();
+    }
+  }
+  function stepBackward() {
+    if (state.busy) return;
+    if (!state.moves.length) return;
+    const lastToken = state.moves[state.moves.length - 1];
+    state.moves.pop(); state.counter--;
+    counterEl.textContent = state.counter;
+    const { face, power } = parseAlg(lastToken)[0];
+    // Undo: apply the inverse, both to the model (instant) and visually.
+    applyMove(cubies, face, power === 0 ? 2 : (power === 2 ? 0 : power));
+    for (const part of parts) {
+      part.mesh.position.set(part.data.pos[0], part.data.pos[1], part.data.pos[2]);
+      part.mesh.quaternion.copy(bodyQuat(part.data));
+    }
+    highlighted = state.moves.length - 1;
+    renderLog(highlighted);
+    updateIdleStatus();
+  }
+
+  /* ------------------------------------------------------------------------ *
+   *  SOLVER LIFECYCLE (cubejs)                                               *
+   * ---------------------------------------------------------------------- */
+  function initSolver() {
+    if (typeof window.Cube === 'undefined') { toastMsg('cubejs failed to load (check your connection).'); return; }
+    toast.classList.remove('hidden');
+    setTimeout(() => {
+      try {
+        window.Cube.initSolver();
+        solverReady = true;
+        toast.classList.add('hidden');
+      } catch (e) {
+        toastMsg('Solver init failed: ' + e.message);
+      }
+    }, 50);
+  }
+  function waitForSolver() {
+    return new Promise(resolve => {
+      if (solverReady) return resolve();
+      const tick = () => { if (solverReady) return resolve(); setTimeout(tick, 100); };
+      tick();
+    });
+  }
+
+  /* ------------------------------------------------------------------------ *
+   *  RENDER LOOP                                                             *
+   * ---------------------------------------------------------------------- */
+  let lastTime = performance.now();
+  let paused = false; // set true while a screenshot is captured
+  function animate(now) {
+    requestAnimationFrame(animate);
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    if (paused) return;
+    controls.update();
+    updateAnimation(dt);
+    renderer.render(scene, camera);
+  }
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // Initial status + render.
+  resetMoves();
+  updateIdleStatus();
+  initSolver();
+  requestAnimationFrame(animate);
+
+  // Force one render pass on demand.
+  function renderNow() {
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  /*
+   * Read the rendered scene straight out of the WebGL back buffer via
+   * gl.readPixels and return { width, height, data(base64) } where data is the
+   * raw RGBA pixels, top-down (rows flipped from GL's y-up). This bypasses the
+   * unreliable 2D-canvas sync in headless Chromium. The screenshot harness
+   * decodes the bytes and encodes a PNG with ImageMagick (see
+   * tools/render-screenshot.js).
+   */
+  // Read the rendered scene straight out of the WebGL back buffer via
+  // gl.readPixels and return { width, height, data(base64) }. `data` is raw
+  // RGBA pixels, top-down (GL's y-up is flipped). Cube geometry has alpha=255;
+  // pixels outside the cube carry whatever alpha the scene background has
+  // (set to 0 by renderFrame so the cube composites cleanly). In headless
+  // Chromium the 2D-canvas representation that page.screenshot / toDataURL
+  // read doesn't sync with the GL back buffer, so reading pixels directly is
+  // the reliable way to capture the cube.
+  function readFrame() {
+
+    renderNow();
+
+    const gl = renderer.getContext();
+
+    const W = renderer.domElement.width, H = renderer.domElement.height;
+
+    const buf = new Uint8Array(W * H * 4);
+
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+
+    // Flip rows to top-down (GL is y-up). Keep all 4 channels.
+
+    const out = new Uint8Array(W * H * 4);
+
+    for (let y = 0; y < H; y++) {
+
+      const srcRow = (H - 1 - y) * W * 4;
+
+      const dstRow = y * W * 4;
+
+      out.set(buf.subarray(srcRow, srcRow + W * 4), dstRow);
+
+    }
+
+    let bin = '';
+
+    for (let i = 0; i < out.length; i += 8192) bin += String.fromCharCode.apply(null, out.subarray(i, i + 8192));
+
+    return { width: W, height: H, data: btoa(bin) };
+
+  }
+
+  // Render one frame with a transparent scene background and return its pixels.
+  // The background is restored immediately, so this is safe to call from the
+  // hook; the returned PNG contains only the cube (and shadows) over
+  // transparency, ready to composite over the DOM UI.
+  function renderFrame() {
+    const prev = scene.background;
+    scene.background = new THREE.Color(0, 0, 0, 0);
+    try { return readFrame(); }
+    finally { scene.background = prev; }
+  }
+
+  // Force the renderer to a specific pixel ratio and rescale the canvas to the
+  // current viewport. Used by the screenshot harness to pin devicePixelRatio
+  // to 1 so the returned pixel buffer maps 1:1 to the viewport.
+  function setPixelRatio(pr) {
+    devicePixelRatio = pr;
+    renderer.setPixelRatio(pr);
+    const c = renderer.domElement;
+    c.style.width = '100%';
+    c.style.height = '100%';
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+  }
+
+  /* ------------------------------------------------------------------------ *
+   *  Public hook for the screenshot harness (tools/render-screenshot.js).     *
+   * ---------------------------------------------------------------------- */
+  window.__RUBIKS__ = {
+    get ready() { return solverReady; },
+    get busy() { return state.busy; },
+    get status() { return state.status; },
+    get cubies() { return cubies; },
+    isAnimating: () => state.busy,
+    // Drive one move (no animation) — used for instant screenshots.
+    applyInstant: (face, power) => {
+      applyMove(cubies, face, power);
+      for (const p of parts) { p.mesh.position.set(p.data.pos[0], p.data.pos[1], p.data.pos[2]); p.mesh.quaternion.copy(bodyQuat(p.data)); }
+      recordMove(face + (power === 1 ? '2' : (power === 2 ? "'" : '')));
+      updateIdleStatus();
+    },
+    applyAlg: function (alg) {
+      // Iterate in a plain function so `this` stays bound even when callers
+      // detach the method (e.g. page.evaluate((a) => hook.applyAlg(a)) from the
+      // screenshot harness). Keeps the harness simple.
+      for (const { face, power } of parseAlg(alg)) this.applyInstant(face, power);
+    },
+    solveToSolved: async function (alg) {
+      this.applyAlg(alg);
+      if (!solverReady) await waitForSolver();
+      return solve();
+    },
+    setCamera: () => { controls.setView(HOME_POS); controls.spherical.theta = controls.thetaTarget; controls.spherical.phi = controls.phiTarget; controls.spherical.radius = controls.radiusTarget; },
+
+    // Freeze the animation loop, render a frame, and return it as raw RGBA
+
+    // pixels. The harness turns these into a PNG and composites them over the
+    // full-page screenshot (headless Chromium doesn't sync the GL canvas into
+
+    // page.screenshot). `setPixelRatio(1)` is called by the harness so the
+
+    // returned buffer matches the viewport 1:1.
+
+    readFrame,
+
+    setPixelRatio,
+
+    readFaceletString: () => readFaceletString(cubies),
+
+    isSolved: () => isSolved(cubies),
+    waitUntilIdle: (maxMs = 10000) => new Promise(res => {
+      const t0 = performance.now();
+      const tick = () => { if (!state.busy || performance.now() - t0 > maxMs) return res(); setTimeout(tick, 60); };
+      tick();
+    }),
+  };
+  window.__RUBIKS__.ready && console.log('Cutie ready');
+  </script>
+</body>
+</html>

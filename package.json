@@ -1,0 +1,14 @@
+{
+  "name": "cutie-rubiks-cube",
+  "version": "1.0.0",
+  "description": "A single-file, client-side 3D Rubik's Cube solver with cubejs-powered solving.",
+  "type": "commonjs",
+  "scripts": {
+    "verify": "node tools/verify.js",
+    "start": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "cubejs": "1.3.2",
+    "playwright": "^1.65.1"
+  }
+}
