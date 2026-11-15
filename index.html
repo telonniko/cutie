@@ -76,9 +76,9 @@
         <label for="speed" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Animation speed</label>
         <span id="speed-val" class="text-xs text-slate-400 tabular-nums">1.0×</span>
       </div>
-      <input id="speed" type="range" min="0.1" max="3" step="0.1" value="1"
+      <input id="speed" type="range" min="0.3" max="3" step="0.1" value="1"
              class="w-full" />
-      <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Fast</span><span>Slow</span></div>
+      <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Slow</span><span>Fast</span></div>
     </section>
 
     <!-- Load scrambled file -->
@@ -478,15 +478,26 @@
     current: null,      // active animation object
     queue: [],          // pending animations
     speed: 1,           // 1 = normal; higher = faster
+    auto: false,        // true = the queue auto-advances (scramble/solve); false = Step buttons drive it
     counter: 0,
     status: 'Solved',
   };
   let solverReady = false;
 
   // Durations scale with the speed slider.
-  function moveDuration(power) {
-    const base = 0.55 / state.speed; // seconds for a 90° turn at 1x
-    return base * (power === 1 ? 1.35 : 1);
+  //
+  //  - TURN_SECONDS: seconds for one 90° turn at 1× speed.
+  //  - DOUBLE_PENALTY: half-turns ('2') take a little longer than a quarter turn.
+  //  - PACE: a per-kind multiplier so a *solve* plays a touch slower than a
+  //    *scramble* (easier to follow step-by-step) while staying close to it.
+  const TURN_SECONDS = 0.42;
+  const DOUBLE_PENALTY = 1.15;
+  const PACE = { scramble: 1, turn: 1, solve: 1.15 };
+
+  function moveDuration(power, kind = 'turn') {
+    const base = TURN_SECONDS / state.speed; // seconds for a 90° turn at 1×
+    const double = power === 1 ? DOUBLE_PENALTY : 1;
+    return base * double * (PACE[kind] || 1);
   }
   const easeInOut = t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
 
@@ -551,36 +562,39 @@
     counterEl.textContent = state.counter;
   }
 
-  function buildAnim(face, power) {
+  function buildAnim(face, power, kind = 'turn') {
     const move = MOVES[face];
     const reps = power === 1 ? 2 : (power === 2 ? -1 : 1);
     const totalAngle = move.sign * reps * (Math.PI / 2);
     const axisVec = v3(AXIS_DIRS[move.axis]);
     return {
       face, power, move, totalAngle, axisVec,
-      elapsed: 0, duration: moveDuration(power),
+      elapsed: 0, duration: moveDuration(power, kind),
       moving: null, // captured lazily at animation start (see startCurrent)
     };
   }
 
-  function queueMove(face, power = 0, { record = true } = {}) {
+  function queueMove(face, power = 0, { record = true, kind = 'turn' } = {}) {
     const token = face + (power === 1 ? '2' : (power === 2 ? "'" : ''));
     if (record) recordMove(token);
-    state.queue.push(buildAnim(face, power));
+    state.queue.push(buildAnim(face, power, kind));
     if (!state.busy) { state.busy = true; startCurrent(); }
+  }
+
+  // Begin a specific animation: capture its moving layer + start transforms from
+  // the LIVE model/meshes. In a batch the earlier moves have already advanced the
+  // model and snapped the meshes, so the layer membership and start orientation
+  // for THIS move differ from what they were when it was queued.
+  function beginAnim(anim) {
+    state.current = anim;
+    anim.elapsed = 0;
+    anim.moving = parts.filter(p => p.data.pos[anim.move.axis] === anim.move.layer)
+      .map(p => ({ part: p, startPos: p.mesh.position.clone(), startQuat: p.mesh.quaternion.clone() }));
   }
 
   function startCurrent() {
     if (!state.queue.length) { finishBatch(); return; }
-    const a = state.queue.shift();
-    state.current = a;
-    a.elapsed = 0;
-    // Capture the moving layer + each cubie's start transform NOW, from the live
-    // model and meshes. In a batch the earlier moves have already advanced the
-    // model and snapped the meshes, so the layer membership and start orientation
-    // for THIS move differ from what they were when it was queued.
-    a.moving = parts.filter(p => p.data.pos[a.move.axis] === a.move.layer)
-      .map(p => ({ part: p, startPos: p.mesh.position.clone(), startQuat: p.mesh.quaternion.clone() }));
+    beginAnim(state.queue.shift());
     // highlight the newest move in the log
     renderLog(state.moves.length - 1);
     if (!state.solving) setStatus('Turning…', 'busy');
@@ -594,8 +608,14 @@
       part.mesh.quaternion.copy(bodyQuat(part.data));
     }
     state.current = null;
-    if (state.queue.length) startCurrent();
-    else finishBatch();
+    if (state.queue.length) {
+      // Auto-advancing batches (scramble/solve) keep going; the Step buttons
+      // (auto=false) stop after one move, leaving the rest for the next step.
+      if (state.auto) startCurrent();
+      else { state.busy = false; updatePausedStatus(); }
+    } else {
+      finishBatch();
+    }
   }
 
   function finishBatch() {
@@ -614,6 +634,13 @@
     if (isSolved(cubies)) setStatus('Solved', 'solved');
     else if (state.moves.length) setStatus('Scrambled', 'scrambled');
     else setStatus('Solved', 'solved');
+  }
+
+  // A batch paused between steps: report that more moves are waiting to play.
+  function updatePausedStatus() {
+    if (state.solving) setStatus('Solving — paused', 'solving');
+    else if (state.queue.length) setStatus('Paused — Step ▸ to continue', 'idle');
+    else updateIdleStatus();
   }
 
   // The per-frame animation update.
@@ -651,8 +678,9 @@
       seq.push(f + mods[Math.floor(Math.random()*3)]);
     }
     resetMoves();
+    state.auto = true;
     setStatus('Scrambling…', 'busy');
-    for (const token of parseAlg(seq.join(' '))) queueMove(token.face, token.power, { record: true });
+    for (const token of parseAlg(seq.join(' '))) queueMove(token.face, token.power, { record: true, kind: 'scramble' });
     // queueMove already kicked off startCurrent() (busy was false), so the
     // animation runs. Re-assert the batch status after startCurrent's "Turning…".
     if (state.busy) setStatus('Scrambling…', 'busy');
@@ -691,10 +719,11 @@
     if (!tokens.length) { setStatus('Already solved', 'solved'); return; }
     resetMoves();
     state.solving = true;
+    state.auto = true;
     setStatus('Solving…', 'solving');
     // queueMove drives startCurrent() itself (busy was false), which animates the
     // solution. Re-assert the batch status after startCurrent's "Turning…".
-    for (const { face, power } of tokens) queueMove(face, power, { record: true });
+    for (const { face, power } of tokens) queueMove(face, power, { record: true, kind: 'solve' });
     if (state.busy) setStatus('Solving…', 'solving');
   }
 
@@ -702,10 +731,11 @@
   function loadScrambleText(text) {
     if (state.busy) return;
     resetCube();
+    state.auto = true;
     const tokens = parseAlg(text);
     if (!tokens.length) { toastMsg('No valid moves found in that file (expected notation like U R2 F2 D).'); return; }
     setStatus('Scrambling…', 'busy');
-    for (const { face, power } of tokens) queueMove(face, power, { record: true });
+    for (const { face, power } of tokens) queueMove(face, power, { record: true, kind: 'scramble' });
     // See note in scramble(): queueMove drives startCurrent() itself.
     if (state.busy) setStatus('Scrambling…', 'busy');
   }
@@ -763,9 +793,10 @@
   const speed = document.getElementById('speed');
   const speedVal = document.getElementById('speed-val');
   speed.addEventListener('input', () => {
-    // slider is "fast→slow": higher slider value = slower
-    state.speed = 1 / (parseFloat(speed.value));
-    speedVal.textContent = (1/state.speed >= 1 ? (1/state.speed).toFixed(1) : (1/state.speed).toFixed(2)) + '×';
+    // The slider value IS the speed multiplier: low = slow, high = fast.
+    // So the displayed number rises left→right, 0.3× (Slow) → 3.0× (Fast).
+    state.speed = parseFloat(speed.value);
+    speedVal.textContent = state.speed.toFixed(1) + '×';
   });
 
   // --- Keyboard shortcuts ---
@@ -788,27 +819,32 @@
     else if (k === 'b') stepBackward();
   });
 
-  // Step forward / backward through a queued solve/scramble sequence.
-  let autoPlaying = true;
+  // Step through a sequence one move at a time. auto=false so each step plays a
+  // single move and stops, leaving the rest of the queue for the next step.
   function stepForward() {
-    // If idle with a solve queued (paused), advance one move.
-    if (!state.busy && state.queue.length) {
-      state.busy = true; startCurrent();
-    }
+    if (state.busy) return;
+    if (!state.queue.length) return;          // nothing queued to advance to
+    // Re-record the replayed move so the log stays consistent with the animation.
+    const a = state.queue[0];
+    recordMove(a.face + (a.power === 1 ? '2' : (a.power === 2 ? "'" : '')));
+    state.auto = false;
+    state.busy = true;
+    startCurrent();
   }
+
   function stepBackward() {
     if (state.busy) return;
-    if (!state.moves.length) return;
-    const lastToken = state.moves[state.moves.length - 1];
-    state.moves.pop(); state.counter--;
-    counterEl.textContent = state.counter;
-    const { face, power } = parseAlg(lastToken)[0];
-    // Undo: apply the inverse, both to the model (instant) and visually.
-    applyMove(cubies, face, power === 0 ? 2 : (power === 2 ? 0 : power));
-    for (const part of parts) {
-      part.mesh.position.set(part.data.pos[0], part.data.pos[1], part.data.pos[2]);
-      part.mesh.quaternion.copy(bodyQuat(part.data));
-    }
+    if (!state.moves.length) return;          // nothing executed to undo
+    const token = state.moves[state.moves.length - 1];
+    state.moves.pop(); state.counter--; counterEl.textContent = state.counter;
+    const { face, power } = parseAlg(token)[0];
+    const inv = power === 0 ? 2 : (power === 2 ? 0 : power);
+    // Keep the original move queued so Step ▸ can replay it.
+    state.queue.push(buildAnim(face, power, 'turn'));
+    // Animate the inverse now, stopping before the re-queued original.
+    state.auto = false;
+    state.busy = true;
+    beginAnim(buildAnim(face, inv, 'turn'));
     highlighted = state.moves.length - 1;
     renderLog(highlighted);
     updateIdleStatus();
