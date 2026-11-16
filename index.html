@@ -294,6 +294,10 @@
 
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
+    // Transparent canvas so a cube-only frame (renderFrame) can be composited
+    // over the DOM UI in screenshots without hiding the edge panels. The scene
+    // background is opaque, so the live app looks unchanged.
+    alpha: true,
     // Keep the drawing buffer so screenshots (and pixel reads in headless
     // tests) capture a rendered frame instead of a cleared one.
     preserveDrawingBuffer: true,
@@ -461,7 +465,9 @@
     setView(preset) {
       const p = HOME_POS;
       const s = new THREE.Spherical().setFromVector3(p.clone().sub(this.target));
-      if (preset) { this.thetaTarget = p.theta; this.phiTarget = p.phi; this.radiusTarget = p.radius; }
+      // `s` holds HOME_POS's spherical coords; `p` is a plain Vector3 with no
+      // theta/phi/radius, so read the targets from the Spherical, not the point.
+      if (preset) { this.thetaTarget = s.theta; this.phiTarget = s.phi; this.radiusTarget = s.radius; }
     }
     update() {
       // ease toward targets
@@ -1072,11 +1078,21 @@
   // The background is restored immediately, so this is safe to call from the
   // hook; the returned PNG contains only the cube (and shadows) over
   // transparency, ready to composite over the DOM UI.
+  // Render one frame with a TRANSPARENT scene background and return its pixels.
+  // A plain transparent Color background is not enough: three.js clears an
+  // opaque Color at clearAlpha=1, so we (a) drop the background to null and
+  // (b) clear with alpha 0. With the renderer created with alpha:true the empty
+  // regions read back as transparent, so the cube layer composites cleanly over
+  // the DOM UI. The background + clear state is restored immediately, so this is
+  // safe to call from the hook.
   function renderFrame() {
-    const prev = scene.background;
-    scene.background = new THREE.Color(0, 0, 0, 0);
+    const prevBg = scene.background;
+    const prevClear = renderer.getClearColor(new THREE.Color());
+    const prevAlpha = renderer.getClearAlpha();
+    scene.background = null;
+    renderer.setClearColor(0x000000, 0);
     try { return readFrame(); }
-    finally { scene.background = prev; }
+    finally { scene.background = prevBg; renderer.setClearColor(prevClear, prevAlpha); }
   }
 
   // Force the renderer to a specific pixel ratio and rescale the canvas to the
@@ -1132,6 +1148,8 @@
     // returned buffer matches the viewport 1:1.
 
     readFrame,
+
+    renderFrame,
 
     setPixelRatio,
 

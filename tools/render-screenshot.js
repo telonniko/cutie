@@ -44,12 +44,16 @@ function readScramble(i) {
 }
 
 // Convert a base64-encoded raw RGBA pixel buffer to a PNG file via ImageMagick.
+// ImageMagick v7 (magick) reads headerless pixels with `-size WxH -depth 8` and
+// the `rgba:`/`rgb:` raw format; the old `convert WxH rgb:file` positional form
+// no longer parses under IMv7.
 function pixelsToPng(base64, w, h, outPng) {
   const raw = Buffer.from(base64, 'base64');
-  const rawPath = path.join(TMP, 'pixels.rgb');
+  const rawPath = path.join(TMP, 'pixels.rgba');
   fs.writeFileSync(rawPath, raw);
-  // ImageMagick: read the raw pixels as an RGB image at w x h and write a PNG.
-  execFileSync('convert', [`${w}x${h}`, 'rgb:' + rawPath, '-background', 'black', '-compose', 'over', '-alpha', 'remove', outPng]);
+  // readFrame() returns a 4-channel RGBA buffer, so read it as rgba and keep the
+  // alpha channel (the cube layer is composited over the DOM UI below).
+  execFileSync('magick', ['-size', `${w}x${h}`, '-depth', '8', 'rgba:' + rawPath, outPng]);
 }
 
 async function main() {
@@ -74,15 +78,18 @@ async function main() {
 
   // --- Helper: capture the full UI + the GL frame and composite them. ---
   async function snap(name) {
-    // 1) Get the cube as a PNG (from the GL back buffer).
-    const frame = await page.evaluate(() => window.__RUBIKS__.readFrame());
+    // 1) Get the cube as a PNG (from the GL back buffer, transparent background
+    // so it composites cleanly over the UI without hiding the edge panels).
+    const frame = await page.evaluate(() => window.__RUBIKS__.renderFrame());
     const cubePng = path.join(TMP, name + '.cube.png');
     pixelsToPng(frame.data, frame.width, frame.height, cubePng);
     // 2) Get the DOM UI (canvas region will be dark; we overlay the cube).
     const uiPng = path.join(TMP, name + '.ui.png');
     await page.screenshot({ path: uiPng });
-    // 3) Composite: cube over UI at (0, 0).
-    execFileSync('convert', [uiPng, cubePng, '-compose', 'over', '-gravity', 'NorthWest', '-geometry', '+0+0', path.join(OUT, name)]);
+    // 3) Composite: cube over UI at (0, 0).  `-composite` (IMv7) actually merges
+    // the two-image sequence produced by `-compose over` into ONE output file;
+    // without it magick writes one file per input image (name-0, name-1, …).
+    execFileSync('magick', [uiPng, cubePng, '-compose', 'over', '-gravity', 'NorthWest', '-geometry', '+0+0', '-composite', path.join(OUT, name)]);
   }
 
   // ---- 1. Solved (initial state) ----
