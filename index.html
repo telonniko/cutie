@@ -26,6 +26,10 @@
     transition: transform .07s ease, box-shadow .07s ease, background-color .07s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
     user-select: none; -webkit-tap-highlight-color: transparent;
+    /* Stop Safari from treating a tap on the button as a scroll/zoom gesture,
+       which otherwise fires pointercancel and suppresses the synthesized
+       click/dblclick that actually drives the face turn. */
+    touch-action: none;
   }
   .face-btn.pressed {
     background-color: #020617 !important; /* slate-950: pushed in */
