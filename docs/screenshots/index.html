@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cutie — Screenshot Gallery</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-2: #111830;
+    --card: #131c33;
+    --card-2: #0e1526;
+    --border: #24304f;
+    --text: #e6ecff;
+    --muted: #9aa7c7;
+    --accent: #3ba7ff;
+    --good: #35d07f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #16213f 0%, transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, #102a2e 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+  }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 56px; }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .glyph {
+    width: 34px; height: 34px;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    gap: 3px;
+  }
+  .glyph i { border-radius: 3px; }
+  .glyph i:nth-child(1), .glyph i:nth-child(3) { background: #fff; }
+  .glyph i:nth-child(2) { background: #4ade80; }
+  .glyph i:nth-child(4) { background: #f87171; }
+  .glyph i:nth-child(5) { background: #3ba7ff; }
+  .glyph i:nth-child(6) { background: #4ade80; }
+  .glyph i:nth-child(7) { background: #fff; }
+  .glyph i:nth-child(8) { background: #fb923c; }
+  .glyph i:nth-child(9) { background: #4ade80; }
+  .brand h1 {
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    margin: 0;
+    font-weight: 700;
+  }
+  h1 {
+    font-size: clamp(30px, 4vw, 46px);
+    letter-spacing: -0.03em;
+    margin: 0 0 14px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #ffffff 0%, #b9c9ff 60%, #3ba7ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub {
+    color: var(--muted);
+    max-width: 640px;
+    margin: 0 auto;
+    font-size: 17px;
+  }
+
+  /* Gallery */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  @media (max-width: 900px) { .gallery { grid-template-columns: 1fr; } }
+
+  figure {
+    margin: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,0.6);
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  figure:hover {
+    transform: translateY(-4px);
+    border-color: #33436e;
+  }
+
+  .thumb {
+    position: relative;
+    display: block;
+    background: var(--card-2);
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+  }
+  .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .step {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(9, 14, 28, 0.72);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 999px;
+  }
+
+  figcaption {
+    padding: 18px 20px 22px;
+    border-top: 1px solid var(--border);
+  }
+  figcaption h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 999px;
+    flex: none;
+  }
+  .dot.solved { background: var(--good); box-shadow: 0 0 10px var(--good); }
+  .dot.scrambled { background: #3ba7ff; box-shadow: 0 0 10px #3ba7ff; }
+  figcaption p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  footer {
+    margin-top: 56px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <span class="glyph" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </span>
+        <h1>Cutie</h1>
+      </div>
+      <h1>Screenshot Gallery</h1>
+      <p class="sub">
+        A single-file, client-side 3D Rubik's Cube solver powered by
+        Three.js and cubejs. The three shots below trace a full
+        solve — from a clean cube, through a scramble, back to solved.
+      </p>
+    </header>
+
+    <section class="gallery">
+      <figure>
+        <a class="thumb" href="solved.png" target="_blank" rel="noopener">
+          <span class="step">Step 1</span>
+          <img src="solved.png" alt="Cutie Rubik's Cube in its solved starting state" loading="lazy" />
+        </a>
+        <figcaption>
+          <h2><span class="dot solved"></span>Solved</h2>
+          <p>
+            The starting state: a fully-solved cube with each face a single,
+            solid color. Status reads <strong>Solved</strong> and the move
+            counter is at zero, ready to scramble.
+          </p>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a class="thumb" href="scrambled.png" target="_blank" rel="noopener">
+          <span class="step">Step 2</span>
+          <img src="scrambled.png" alt="Cutie Rubik's Cube after a random scramble of 24 moves" loading="lazy" />
+        </a>
+        <figcaption>
+          <h2><span class="dot scrambled"></span>Scrambled</h2>
+          <p>
+            A random 24-move scramble has shuffled the cube into a mixed
+            state. The status indicator flips to <strong>Scrambled</strong>
+            and the move counter tracks the turns applied.
+          </p>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a class="thumb" href="solved-after.png" target="_blank" rel="noopener">
+          <span class="step">Step 3</span>
+          <img src="solved-after.png" alt="Cutie Rubik's Cube again solved after the solver runs" loading="lazy" />
+        </a>
+        <figcaption>
+          <h2><span class="dot solved"></span>Solved Again</h2>
+          <p>
+            cubejs finds a short solution and the cube animates step-by-step
+            back to order. Status returns to <strong>Solved</strong>, with the
+            move counter now showing the full scramble-plus-solve total.
+          </p>
+        </figcaption>
+      </figure>
+    </section>
+
+    <footer>
+      <p>
+        Captured headlessly with Playwright &middot;
+        <a href="../prompts/cutie.md">spec</a> &middot;
+        <a href="../../index.html">launch the app</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
