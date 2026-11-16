@@ -20,6 +20,18 @@
   /* Fade-in for panels */
   @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .fadein { animation: fadein .25s ease; }
+  /* Face buttons: simulated press. The button visibly depresses on pointer down
+     (darker fill, inset shadow, slight push-down) and snaps back when released. */
+  .face-btn {
+    transition: transform .07s ease, box-shadow .07s ease, background-color .07s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .face-btn.pressed {
+    background-color: #020617 !important; /* slate-950: pushed in */
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.03);
+    transform: translateY(2px) scale(0.94);
+  }
 </style>
 </head>
 <body class="bg-slate-950 text-slate-100">
@@ -766,19 +778,118 @@
   }
 
   // --- Face buttons ---
+  // Tactile + label feedback for the six face buttons:
+  //   • Pressed state: a button visibly depresses (see .face-btn.pressed) while
+  //     the pointer is down, and previews the move it will perform — a second
+  //     click within 300ms is a half-turn (U2), otherwise a prime if the
+  //     Shift key is held (U').
+  //   • Ambient prime label: while the Shift key is HELD, every face
+  //     button shows its prime label (U', D', …) even with no mouse involved,
+  //     and — crucially — the label STAYS primed after a click for as long as
+  //     the key remains down. Releasing the key snaps every label back to the
+  //     plain letter.  (Cmd/Meta is intentionally ignored — on macOS it is the
+  //     right-click modifier, and mixing two modifiers would leave the label
+  //     undefined if only one of them is released.)
   const faceBtnWrap = document.getElementById('face-buttons');
+
+  // Global "prime" modifier state, driven ONLY by the Shift key, so the labels
+  // can never be left in an ambiguous state by Cmd/Meta. On macOS Cmd is the
+  // right-click modifier and is intentionally ignored for the UI, and a two-key
+  // scheme would leave the label undefined if only one key were released.
+  let shiftHeld = false;
+  const isPrime = () => shiftHeld;
+  const ambientLabel = (f) => (shiftHeld ? f + "'" : f);
+  // Repaint every face button's label to its ambient (resting) value, unless a
+  // button is mid-press — its transient preview owns the label until it releases.
+  function paintAmbient() {
+    for (const b of faceBtnWrap.querySelectorAll('button')) {
+      if (b.classList.contains('pressed')) continue;
+      b.textContent = ambientLabel(b.dataset.face);
+    }
+  }
+  addEventListener('keydown', e => {
+    if (e.repeat || e.key !== 'Shift') return;
+    shiftHeld = true; paintAmbient();
+  });
+  addEventListener('keyup', e => {
+    if (e.key !== 'Shift') return;
+    shiftHeld = false; paintAmbient();
+  });
+
+  // Double-click threshold (ms): a face press is a single 90° turn unless a
+  // second press arrives within this window, which makes it a 180° half-turn.
+  // The single-click move is DEFERRED by this long so we never start a 90°
+  // turn and then have to reverse it into a 180° (that looks jarring).  There
+  // is intentionally no UI control here — tune the number by editing the code.
+  const DBLCLICK_MS = 250;
+
+  const pressFace = (b, f, { isDouble }) => {
+    b.classList.add('pressed');
+    b.textContent = isDouble ? f + '2' : ambientLabel(f);
+  };
+  // On release, snap back to the AMBIENT label, so a prime preview persists
+  // while Shift is still held rather than reverting to the plain letter.
+  const releaseFace = (b, f) => {
+    b.classList.remove('pressed');
+    b.textContent = ambientLabel(f);
+  };
   for (const f of FACE_LETTERS) {
     const b = document.createElement('button');
     b.textContent = f;
     b.dataset.face = f;
+    b._lastDown = 0;
+    b._singleTimer = null;
     b.title = f + ' layer';
-    b.className = 'rounded-lg py-2 text-sm font-semibold bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 transition ' +
+    b.className = 'face-btn rounded-lg py-2 text-sm font-semibold text-center bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 ' +
       (FACE_COLORS[f] ? '' : '');
-    b.addEventListener('click', e => {
-      const prime = e.shiftKey || e.metaKey;
-      userTurn(f, prime ? 2 : 0);
+    // --- Label + depress feedback (visual only) ---
+    // On pointer down: a 2nd press within DBLCLICK_MS previews the half-turn
+    // (U2); otherwise show the ambient (prime-aware) label.  This is only a
+    // preview — the ACTUAL move is decided by the debounced handlers below.
+    b.addEventListener('pointerdown', e => {
+      const now = performance.now();
+      const isDouble = now - b._lastDown < DBLCLICK_MS;
+      b._lastDown = now;
+      pressFace(b, f, { isDouble });
     });
-    b.addEventListener('dblclick', () => userTurn(f, 1));
+    // Restore the flat look on any release (or the pointer leaving the button
+    // while still held); the label returns to the ambient prime state.
+    b.addEventListener('pointerup', () => releaseFace(b, f));
+    b.addEventListener('pointercancel', () => releaseFace(b, f));
+    b.addEventListener('pointerleave', () => releaseFace(b, f));
+
+    // --- Move decision (single = 90°/prime, native dblclick = 180°) ---
+    // A genuine browser double-click reliably fires the native `dblclick`
+    // event, whereas two separate clicks do NOT (verified in the headless
+    // environment: `.dblclick()` -> 1 dblclick event; two `.click()`s -> 0).
+    // We therefore use `dblclick` as the single source of truth for the 180°
+    // half-turn, which makes it race-free and impossible for a lone click to be
+    // misread as a double:
+    //   • Each lone `click` (detail === 1) DEFERS its 90°/prime turn behind a
+    //     DBLCLICK_MS timer, so we never start a quarter-turn that would have to
+    //     be reversed into a half-turn.  Re-arming the timer on every click also
+    //     COLLAPSES rapid overlapping clicks into a single move, so a burst of
+    //     quick clicks still yields one 90° (e.g. 5 quick clicks -> 4 turns).
+    //   • The 2nd click of a real double (detail > 1) does nothing here; the
+    //     native `dblclick` cancels the pending single timer and performs the
+    //     180°.  Because a real double's `dblclick` arrives almost immediately
+    //     after its clicks, it always wins the race — the 90° timer only ever
+    //     fires for a genuinely lone click.
+    // Both paths are gated by userTurn's busy guard, so no move starts while the
+    // cube is animating.
+    b.addEventListener('click', e => {
+      if (e.detail > 1) return;                          // 2nd+ click of a double; dblclick owns it
+      if (b._singleTimer) clearTimeout(b._singleTimer);  // collapse overlapping clicks into one move
+      const prime = e.shiftKey;                         // prime if Shift held on this click
+      b._singleTimer = setTimeout(() => {
+        b._singleTimer = null;
+        userTurn(f, prime ? 2 : 0);                    // lone click -> 90° (prime if Shift)
+      }, DBLCLICK_MS);
+    });
+    b.addEventListener('dblclick', () => {
+      if (b._singleTimer) { clearTimeout(b._singleTimer); b._singleTimer = null; }
+      userTurn(f, 1);                                   // genuine double -> 180° half-turn
+    });
     faceBtnWrap.appendChild(b);
   }
 
