@@ -1,4 +1,4 @@
-# Cubie scrambled-position test file
+# Cutie scrambled-position test file
 # Standard Singmaster notation, applied in order to a SOLVED cube to reach
 # this scrambled state. Lines beginning with '#' and blank lines are ignored.
 #
