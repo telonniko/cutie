@@ -991,13 +991,23 @@
   // single move and stops, leaving the rest of the queue for the next step.
   function stepForward() {
     if (state.busy) return;
-    if (!state.queue.length) return;          // nothing queued to advance to
+    if (!state.queue.length) return;          // nothing parked to replay
+    // Step-back parks the undone moves as a LIFO stack (newest-undone on top /
+    // back of the queue).  Replay from the TOP so the log rebuilds in its
+    // original order and each re-recorded move lands — and highlights — in the
+    // exact slot it was removed from.  (A FIFO read would replay the wrong move
+    // first and highlight the wrong button.)
+    const a = state.queue.pop();
     // Re-record the replayed move so the log stays consistent with the animation.
-    const a = state.queue[0];
     recordMove(a.face + (a.power === 1 ? '2' : (a.power === 2 ? "'" : '')));
+    a.idx = state.moves.length - 1;           // its slot now that it's back in the log
     state.auto = false;
     state.busy = true;
-    startCurrent();
+    beginAnim(a);
+    // Light the re-recorded button before the first frame, like startCurrent.
+    state.playIndex = a.idx;
+    renderMoves();
+    setStatus('Turning…', 'busy');
   }
 
   function stepBackward() {
