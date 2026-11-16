@@ -56,8 +56,8 @@ There are two ways:
    color). The status pill top-right reads **Solved**.
 2. **Scramble it.** Click **Scramble** (or press `S`) to apply a random sequence
    of moves with a quick animation. Status flips to **Scrambled**.
-   — or turn faces by hand using the face buttons / keyboard / by dragging on the
-   cube itself.
+   — or turn faces by hand with the **face buttons** or **keyboard** (dragging on
+   the cube only orbits the camera).
 3. **Solve it.** Click **Solve** (or press `Space`). cubejs computes the shortest
    solution and the cube animates back to order one move at a time, while the
    **Move Log** lights up each move-button in turn as that face turns. Status
@@ -74,8 +74,9 @@ The interface is a dark, glassy overlay floating over the 3D viewport.
 ### 3D viewport (center)
 - **Drag** to orbit the camera around the cube.
 - **Scroll / pinch** to zoom.
-- **Click a face** of the cube to rotate that layer; the turn happens on the live
-  cube.
+
+The cube itself is **view-only** — turns come from the **face buttons** and
+**keyboard shortcuts** (below), not from clicking the cube.
 
 ### Top bar
 - **Cutie** logo (left).
@@ -105,15 +106,22 @@ The interface is a dark, glassy overlay floating over the 3D viewport.
   | **← Step** | Walk back through the move log one move at a time. |
   | **Reset** | Instantly return the cube to the solved state. |
 
-### Face buttons (bottom-left)
-Six buttons — **U D L R F B** — each turn that face's layer on the live cube:
+### Face buttons (left edge)
+Two vertical columns of buttons, centered on the left side of the screen. Each
+button turns its layer on the live cube the moment it is **released**:
 
-- **Click** = clockwise quarter turn (`U`).
-- **Shift + click** = counter-clockwise (`U'`).
-- **Double-click** = 180° half turn (`U2`).
+- **Left column — quarter turns: `U D L R F B`.**
+  - **Click** = clockwise quarter turn (`U`).
+  - **Shift + click** = counter-clockwise (`U'`).
+- **Right column — half turns: `U2 D2 L2 R2 F2 B2`.** Each is a 180° turn.
 
-While **Shift** is held, the buttons display their prime (counter-clockwise)
-label so you can see what the next click will do.
+While **Shift** is held, the quarter-turn buttons display their prime
+(counter-clockwise) label so you can see what the next click will do. The
+half-turn buttons are fixed — a 180° has no direction.
+
+The turns fire on **pointer release**, not the browser's synthesized `click`
+event: Safari can drop that event after a tap, so triggering on `pointerup`
+keeps the buttons responsive across browsers.
 
 ---
 

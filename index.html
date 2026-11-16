@@ -28,7 +28,7 @@
     user-select: none; -webkit-tap-highlight-color: transparent;
     /* Stop Safari from treating a tap on the button as a scroll/zoom gesture,
        which otherwise fires pointercancel and suppresses the synthesized
-       click/dblclick that actually drives the face turn. */
+       click that actually drives the face turn. */
     touch-action: none;
   }
   .face-btn.pressed {
@@ -139,12 +139,16 @@
     </section>
   </aside>
 
-  <!-- ======================= Face buttons (bottom-left) ======================= -->
-  <div class="fixed left-4 bottom-4 z-20 pointer-events-none">
+  <!-- ======================= Face buttons (left edge, vertically centered) ======================= -->
+  <!-- Two columns: left = quarter/prime turns (U…B), right = 180° half-turns (U2…B2). -->
+  <div class="fixed left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
     <div class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3 fadein">
-      <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Turn a layer <span class="text-slate-600 normal-case">(drag the view to orbit)</span></p>
-      <div id="face-buttons" class="grid grid-cols-6 gap-1.5"></div>
-      <p class="text-[10px] text-slate-600 mt-2">Click a face = clockwise · Shift+face = counter-clockwise · double = 180°</p>
+      <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Turn a layer</p>
+      <div class="flex items-start gap-1.5">
+        <div id="face-buttons" class="flex flex-col gap-1.5"></div>
+        <div id="half-buttons" class="flex flex-col gap-1.5"></div>
+      </div>
+      <p class="text-[10px] text-slate-600 mt-2">Shift+click = counter</p>
     </div>
   </div>
 
@@ -830,11 +834,14 @@
   }
 
   // --- Face buttons ---
-  // Tactile + label feedback for the six face buttons:
+  // Two columns: quarter/prime turns (U, D, L, R, F, B) and 180° half-turns
+  // (U2, D2, …). Tactile + label feedback for every button:
   //   • Pressed state: a button visibly depresses (see .face-btn.pressed) while
-  //     the pointer is down, and previews the move it will perform — a second
-  //     click within 300ms is a half-turn (U2), otherwise a prime if the
-  //     Shift key is held (U').
+  //     the pointer is down and snaps back on release.
+  //   • A quarter-turn click is 90° clockwise, or 90° counter-clockwise when the
+  //     Shift key is held (U').  A half-turn button is always a 180° turn.
+  //   • There is NO double-click detection: one click performs exactly one move
+  //     immediately, so there is no deferred timer or timing race.
   //   • Ambient prime label: while the Shift key is HELD, every face
   //     button shows its prime label (U', D', …) even with no mouse involved,
   //     and — crucially — the label STAYS primed after a click for as long as
@@ -849,7 +856,6 @@
   // right-click modifier and is intentionally ignored for the UI, and a two-key
   // scheme would leave the label undefined if only one key were released.
   let shiftHeld = false;
-  const isPrime = () => shiftHeld;
   const ambientLabel = (f) => (shiftHeld ? f + "'" : f);
   // Repaint every face button's label to its ambient (resting) value, unless a
   // button is mid-press — its transient preview owns the label until it releases.
@@ -868,16 +874,13 @@
     shiftHeld = false; paintAmbient();
   });
 
-  // Double-click threshold (ms): a face press is a single 90° turn unless a
-  // second press arrives within this window, which makes it a 180° half-turn.
-  // The single-click move is DEFERRED by this long so we never start a 90°
-  // turn and then have to reverse it into a 180° (that looks jarring).  There
-  // is intentionally no UI control here — tune the number by editing the code.
-  const DBLCLICK_MS = 250;
-
-  const pressFace = (b, f, { isDouble }) => {
+  // --- Quarter-turn buttons (left column): U, D, L, R, F, B. ---
+  // A click is one 90° turn immediately: clockwise, or counter-clockwise when
+  // Shift is held. Half-turns live in the right column — there is NO double-click
+  // detection and NO deferred timer, so a click can never be lost to a race.
+  const pressFace = (b, f) => {
     b.classList.add('pressed');
-    b.textContent = isDouble ? f + '2' : ambientLabel(f);
+    b.textContent = ambientLabel(f);
   };
   // On release, snap back to the AMBIENT label, so a prime preview persists
   // while Shift is still held rather than reverting to the plain letter.
@@ -887,62 +890,64 @@
   };
   for (const f of FACE_LETTERS) {
     const b = document.createElement('button');
-    b.textContent = f;
+    b.textContent = ambientLabel(f);
     b.dataset.face = f;
-    b._lastDown = 0;
-    b._singleTimer = null;
-    b.title = f + ' layer';
-    b.className = 'face-btn rounded-lg py-2 text-sm font-semibold text-center bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 ' +
-      (FACE_COLORS[f] ? '' : '');
-    // --- Label + depress feedback (visual only) ---
-    // On pointer down: a 2nd press within DBLCLICK_MS previews the half-turn
-    // (U2); otherwise show the ambient (prime-aware) label.  This is only a
-    // preview — the ACTUAL move is decided by the debounced handlers below.
-    b.addEventListener('pointerdown', e => {
-      const now = performance.now();
-      const isDouble = now - b._lastDown < DBLCLICK_MS;
-      b._lastDown = now;
-      pressFace(b, f, { isDouble });
+    b.title = f + ' layer — 90° clockwise (Shift: counter)';
+    b.className = 'face-btn w-12 rounded-lg py-2 text-sm font-semibold text-center bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10';
+    // Mouse/touch controls only: the faces also have keyboard shortcuts
+    // (U/D/L/R/F/B, Shift = counter), so keep them out of the tab order and do
+    // not rely on the synthesized `click` event for keyboard activation.
+    b.tabIndex = -1;
+    // All feedback AND the move are driven by Pointer Events, which Safari
+    // delivers reliably.  We deliberately do NOT use the synthesized `click`
+    // event: Safari can suppress or defer it after a pointer interaction (a tiny
+    // movement read as a gesture, or a pointercancel), which left the button
+    // looking responsive while the face never turned and the log never updated.
+    // A Pointer release over the button is the single, reliable trigger.
+    b.addEventListener('pointerdown', () => pressFace(b, f));
+    // Release over the button: snap back to the ambient label AND perform the
+    // turn — counter-clockwise when Shift is held at the moment of release.
+    b.addEventListener('pointerup', e => {
+      releaseFace(b, f);
+      userTurn(f, e.shiftKey ? 2 : 0);
     });
-    // Restore the flat look on any release (or the pointer leaving the button
-    // while still held); the label returns to the ambient prime state.
-    b.addEventListener('pointerup', () => releaseFace(b, f));
+    // A cancel, or the pointer leaving the button while held, un-depresses
+    // WITHOUT turning — only a clean release over the button counts as a turn.
     b.addEventListener('pointercancel', () => releaseFace(b, f));
     b.addEventListener('pointerleave', () => releaseFace(b, f));
-
-    // --- Move decision (single = 90°/prime, native dblclick = 180°) ---
-    // A genuine browser double-click reliably fires the native `dblclick`
-    // event, whereas two separate clicks do NOT (verified in the headless
-    // environment: `.dblclick()` -> 1 dblclick event; two `.click()`s -> 0).
-    // We therefore use `dblclick` as the single source of truth for the 180°
-    // half-turn, which makes it race-free and impossible for a lone click to be
-    // misread as a double:
-    //   • Each lone `click` (detail === 1) DEFERS its 90°/prime turn behind a
-    //     DBLCLICK_MS timer, so we never start a quarter-turn that would have to
-    //     be reversed into a half-turn.  Re-arming the timer on every click also
-    //     COLLAPSES rapid overlapping clicks into a single move, so a burst of
-    //     quick clicks still yields one 90° (e.g. 5 quick clicks -> 4 turns).
-    //   • The 2nd click of a real double (detail > 1) does nothing here; the
-    //     native `dblclick` cancels the pending single timer and performs the
-    //     180°.  Because a real double's `dblclick` arrives almost immediately
-    //     after its clicks, it always wins the race — the 90° timer only ever
-    //     fires for a genuinely lone click.
-    // Both paths are gated by userTurn's busy guard, so no move starts while the
-    // cube is animating.
-    b.addEventListener('click', e => {
-      if (e.detail > 1) return;                          // 2nd+ click of a double; dblclick owns it
-      if (b._singleTimer) clearTimeout(b._singleTimer);  // collapse overlapping clicks into one move
-      const prime = e.shiftKey;                         // prime if Shift held on this click
-      b._singleTimer = setTimeout(() => {
-        b._singleTimer = null;
-        userTurn(f, prime ? 2 : 0);                    // lone click -> 90° (prime if Shift)
-      }, DBLCLICK_MS);
-    });
-    b.addEventListener('dblclick', () => {
-      if (b._singleTimer) { clearTimeout(b._singleTimer); b._singleTimer = null; }
-      userTurn(f, 1);                                   // genuine double -> 180° half-turn
-    });
     faceBtnWrap.appendChild(b);
+  }
+
+  // --- Half-turn buttons (right column): U2, D2, L2, R2, F2, B2. ---
+  // Each release is a single 180° turn. Labels are fixed (a 180° has no
+  // direction), so they do NOT follow the Shift "prime" preview that the
+  // quarter buttons do.
+  const halfBtnWrap = document.getElementById('half-buttons');
+  const pressHalf = (b, f) => {
+    b.classList.add('pressed');
+    b.textContent = f + '2';
+  };
+  const releaseHalf = (b, f) => {
+    b.classList.remove('pressed');
+    b.textContent = f + '2';
+  };
+  for (const f of FACE_LETTERS) {
+    const b = document.createElement('button');
+    b.textContent = f + '2';
+    b.dataset.face = f;
+    b.title = f + ' layer — 180°';
+    b.className = 'face-btn w-12 rounded-lg py-2 text-sm font-semibold font-mono text-center bg-sky-800/70 hover:bg-sky-700 ring-1 ring-sky-400/20';
+    b.tabIndex = -1;
+    // 180° half-turn on a clean Pointer release.  Pointer Events are reliable
+    // in Safari; the synthesized `click` is not.
+    b.addEventListener('pointerdown', () => pressHalf(b, f));
+    b.addEventListener('pointerup', () => {
+      releaseHalf(b, f);
+      userTurn(f, 1);
+    });
+    b.addEventListener('pointercancel', () => releaseHalf(b, f));
+    b.addEventListener('pointerleave', () => releaseHalf(b, f));
+    halfBtnWrap.appendChild(b);
   }
 
   // --- Primary buttons ---
