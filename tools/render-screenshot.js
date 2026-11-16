@@ -101,7 +101,10 @@ async function main() {
   // ---- 2. Scrambled ----
   const s1 = readScramble(1);
   await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), s1);
-  await page.waitForTimeout(500);
+  // Render the Move Log as a grid of move buttons (all "done") so the shot shows
+  // the full scramble sequence, then let the button styles settle before capture.
+  await page.evaluate(() => window.__RUBIKS__.syncLog());
+  await page.waitForTimeout(300);
   await snap('scrambled.png');
   console.log('✓ scrambled.png    status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
@@ -109,8 +112,12 @@ async function main() {
   const facelets = await page.evaluate(() => window.__RUBIKS__.readFaceletString());
   const solution = await page.evaluate((fl) => window.Cube.fromString(fl).solve(), facelets);
   console.log('   solver => ' + solution + ' (' + solution.split(' ').length + ' moves)');
+  // Mirror the app's Solve button: clear the log first, then show only the
+  // solution sequence as a grid of move buttons.
+  await page.evaluate(() => window.__RUBIKS__.clearLog());
   await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), solution);
-  await page.waitForTimeout(500);
+  await page.evaluate(() => window.__RUBIKS__.syncLog());
+  await page.waitForTimeout(300);
   await snap('solved-after.png');
   console.log('✓ solved-after.png status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 

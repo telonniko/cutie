@@ -32,6 +32,28 @@
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.03);
     transform: translateY(2px) scale(0.94);
   }
+  /* Move-log buttons: a compact grid of move tokens (5 per row), styled to
+     match the face buttons. Three visual states driven by state.playIndex:
+       pending — a move not yet reached (muted, dimmed)
+       past    — a move that has already turned (faint "done" look)
+       current — the move animating right now (bright amber highlight) */
+  .move-btn {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; font-weight: 600; line-height: 1;
+    padding: 8px 0; text-align: center;
+    border-radius: 8px; user-select: none;
+    transition: background-color .12s ease, color .12s ease,
+                box-shadow .12s ease, transform .12s ease;
+  }
+  .move-btn.pending { background: #1e293b; color: #94a3b8;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+  .move-btn.past { background: #0e1a2b; color: #475569;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); }
+  .move-btn.current {
+    background: #f59e0b; color: #0b1020; font-weight: 700;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45), 0 4px 12px rgba(245, 158, 11, 0.3);
+    transform: translateY(-1px);
+  }
 </style>
 </head>
 <body class="bg-slate-950 text-slate-100">
@@ -78,7 +100,7 @@
         <p id="log-empty" class="text-slate-500 text-xs leading-relaxed px-1 py-1">
           No moves yet. Use the buttons or keyboard to turn faces, then <b class="text-slate-300">Solve</b> to watch it come back.
         </p>
-        <ol id="log-list" class="space-y-0.5"></ol>
+        <div id="log-list" class="grid grid-cols-5 gap-1.5 content-start"></div>
       </div>
     </section>
 
@@ -499,6 +521,7 @@
     auto: false,        // true = the queue auto-advances (scramble/solve); false = Step buttons drive it
     counter: 0,
     status: 'Solved',
+    playIndex: -1,      // index of the Move-Log button currently highlighted
   };
   let solverReady = false;
 
@@ -534,43 +557,38 @@
     statusDot.className = 'w-2.5 h-2.5 rounded-full ' + (colors[kind] || 'bg-slate-400');
   }
 
-  // --- The move log ---
+  // --- The move log: a grid of move-token buttons (5 per row) ---
   const logList = document.getElementById('log-list');
   const logEmpty = document.getElementById('log-empty');
   const logCount = document.getElementById('log-count');
-  let highlighted = -1;
 
-  function renderLog(highlightIndex) {
+  // Render the Move Log as a grid of buttons, one per move, styled like the
+  // face buttons. state.playIndex selects which button is "current":
+  //   - playIndex === k  -> button k is highlighted, earlier ones "past",
+  //                         later ones "pending".
+  //   - playIndex === n  -> every button is "past" (the batch just finished).
+  //   - playIndex < 0    -> nothing played yet (empty when n === 0).
+  // The #move-log panel already has overflow-y-auto, so the grid scrolls when it
+  // is taller than the panel; we also scroll the active button into view.
+  function renderMoves() {
     const n = state.moves.length;
     logCount.textContent = n + (n === 1 ? ' move' : ' moves');
     logEmpty.style.display = n ? 'none' : 'block';
-    if (highlighted !== -1) {
-      const prev = logList.querySelector('.log-current');
-      if (prev) prev.className = prev.className.replace('log-current ', '');
-    }
     logList.innerHTML = '';
     state.moves.forEach((mv, i) => {
-      const li = document.createElement('li');
-      const isCurrent = i === highlightIndex;
-      li.className = 'flex items-center gap-2 px-2 py-1 rounded-md text-xs ' +
-        (isCurrent ? 'log-current bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/40' :
-                     (i < highlightIndex ? 'text-slate-500' : 'text-slate-200'));
-      const badge = document.createElement('span');
-      badge.className = 'w-10 text-right tabular-nums text-slate-500';
-      badge.textContent = (i + 1) + '.';
-      const mvEl = document.createElement('span');
-      mvEl.className = 'font-mono text-sm ' + (isCurrent ? '' : '');
-      mvEl.textContent = mv;
-      const stateMark = document.createElement('span');
-      stateMark.className = 'ml-auto text-[10px] text-slate-600';
-      stateMark.textContent = i < highlightIndex ? '✓' : (isCurrent ? '▶' : '');
-      li.append(badge, mvEl, stateMark);
-      logList.appendChild(li);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.tabIndex = -1;
+      b.textContent = mv;
+      let cls = 'move-btn ';
+      if (i === state.playIndex) cls += 'current';
+      else if (i < state.playIndex) cls += 'past';
+      else cls += 'pending';
+      b.className = cls;
+      logList.appendChild(b);
     });
-    if (highlightIndex >= 0) {
-      const cur = logList.querySelector('.log-current');
-      if (cur) cur.scrollIntoView({ block: 'nearest' });
-    }
+    const cur = logList.children[state.playIndex];
+    if (cur) cur.scrollIntoView({ block: 'nearest' });
   }
 
   // --- Move execution ---
@@ -595,8 +613,30 @@
   function queueMove(face, power = 0, { record = true, kind = 'turn' } = {}) {
     const token = face + (power === 1 ? '2' : (power === 2 ? "'" : ''));
     if (record) recordMove(token);
-    state.queue.push(buildAnim(face, power, kind));
+    const anim = buildAnim(face, power, kind);
+    // Tag the Move-Log button this turn belongs to so startCurrent can highlight
+    // it. For a single manual turn it is simply the move just recorded.
+    anim.idx = record ? state.moves.length - 1 : undefined;
+    state.queue.push(anim);
     if (!state.busy) { state.busy = true; startCurrent(); }
+  }
+
+  // Enqueue an ENTIRE sequence up front so the Move Log can show every button at
+  // once, then start playing it. Each queued anim is tagged with its button index
+  // (its position in state.moves) so startCurrent lights the right button as that
+  // face turns. busy is set first so the queued moves don't auto-start one at a
+  // time — startCurrent is invoked once, at the end.
+  function runBatch(tokens, kind) {
+    if (!tokens.length) return;
+    state.auto = true;
+    state.busy = true;
+    for (const { face, power } of tokens) {
+      recordMove(face + (power === 1 ? '2' : (power === 2 ? "'" : '')));
+      const anim = buildAnim(face, power, kind);
+      anim.idx = state.moves.length - 1;
+      state.queue.push(anim);
+    }
+    startCurrent();
   }
 
   // Begin a specific animation: capture its moving layer + start transforms from
@@ -612,9 +652,13 @@
 
   function startCurrent() {
     if (!state.queue.length) { finishBatch(); return; }
-    beginAnim(state.queue.shift());
-    // highlight the newest move in the log
-    renderLog(state.moves.length - 1);
+    const anim = state.queue.shift();
+    beginAnim(anim);
+    // Highlight the button for the move that is about to turn, BEFORE the first
+    // frame renders, so each button lights up first and then the face turns.
+    state.playIndex = (anim.idx !== undefined && anim.idx >= 0)
+      ? anim.idx : state.moves.length - 1;
+    renderMoves();
     if (!state.solving) setStatus('Turning…', 'busy');
   }
 
@@ -638,14 +682,16 @@
 
   function finishBatch() {
     state.busy = false;
+    // Mark the whole sequence as done so every button shows the "past" look.
+    state.playIndex = state.moves.length;
     if (state.solving) {
       state.solving = false;
-      renderLog(state.moves.length - 1);
       if (isSolved(cubies)) { setStatus('Solved', 'solved'); }
       else { setStatus('Solved (best effort)', 'solved'); }
     } else {
       updateIdleStatus();
     }
+    renderMoves();
   }
 
   function updateIdleStatus() {
@@ -696,11 +742,10 @@
       seq.push(f + mods[Math.floor(Math.random()*3)]);
     }
     resetMoves();
-    state.auto = true;
     setStatus('Scrambling…', 'busy');
-    for (const token of parseAlg(seq.join(' '))) queueMove(token.face, token.power, { record: true, kind: 'scramble' });
-    // queueMove already kicked off startCurrent() (busy was false), so the
-    // animation runs. Re-assert the batch status after startCurrent's "Turning…".
+    // Show every scramble button up front, then animate the whole sequence.
+    runBatch(parseAlg(seq.join(' ')), 'scramble');
+    // startCurrent flips the status to "Turning…"; re-assert the batch status.
     if (state.busy) setStatus('Scrambling…', 'busy');
   }
 
@@ -720,9 +765,9 @@
   }
 
   function resetMoves() {
-    state.moves = []; state.counter = 0; highlighted = -1;
+    state.moves = []; state.counter = 0; state.playIndex = -1;
     counterEl.textContent = '0';
-    renderLog(-1);
+    renderMoves();
   }
 
   // Solve using cubejs. Rebuilds the cubejs state from the 3D model, asks for
@@ -737,11 +782,9 @@
     if (!tokens.length) { setStatus('Already solved', 'solved'); return; }
     resetMoves();
     state.solving = true;
-    state.auto = true;
     setStatus('Solving…', 'solving');
-    // queueMove drives startCurrent() itself (busy was false), which animates the
-    // solution. Re-assert the batch status after startCurrent's "Turning…".
-    for (const { face, power } of tokens) queueMove(face, power, { record: true, kind: 'solve' });
+    // Display the full solution sequence, then highlight each move as it plays.
+    runBatch(tokens, 'solve');
     if (state.busy) setStatus('Solving…', 'solving');
   }
 
@@ -749,12 +792,11 @@
   function loadScrambleText(text) {
     if (state.busy) return;
     resetCube();
-    state.auto = true;
     const tokens = parseAlg(text);
     if (!tokens.length) { toastMsg('No valid moves found in that file (expected notation like U R2 F2 D).'); return; }
     setStatus('Scrambling…', 'busy');
-    for (const { face, power } of tokens) queueMove(face, power, { record: true, kind: 'scramble' });
-    // See note in scramble(): queueMove drives startCurrent() itself.
+    // Show every loaded move as a button, then animate the scramble from solved.
+    runBatch(tokens, 'scramble');
     if (state.busy) setStatus('Scrambling…', 'busy');
   }
 
@@ -956,14 +998,18 @@
     state.moves.pop(); state.counter--; counterEl.textContent = state.counter;
     const { face, power } = parseAlg(token)[0];
     const inv = power === 0 ? 2 : (power === 2 ? 0 : power);
-    // Keep the original move queued so Step ▸ can replay it.
-    state.queue.push(buildAnim(face, power, 'turn'));
+    // Keep the original move queued so Step ▸ can replay it, tagged with the
+    // index it will occupy once re-recorded, so its button highlights correctly.
+    const orig = buildAnim(face, power, 'turn');
+    orig.idx = state.moves.length;
+    state.queue.push(orig);
     // Animate the inverse now, stopping before the re-queued original.
     state.auto = false;
     state.busy = true;
     beginAnim(buildAnim(face, inv, 'turn'));
-    highlighted = state.moves.length - 1;
-    renderLog(highlighted);
+    // Remaining moves are shown as done; the just-undone button is dropped.
+    state.playIndex = state.moves.length;
+    renderMoves();
     updateIdleStatus();
   }
 
@@ -1152,6 +1198,11 @@
     renderFrame,
 
     setPixelRatio,
+
+    // Screenshot-only helpers: render / clear the Move Log grid instantly (no
+    // animation) so a captured frame shows the move-button sequence.
+    clearLog: () => resetMoves(),
+    syncLog: () => { state.playIndex = state.moves.length; renderMoves(); },
 
     readFaceletString: () => readFaceletString(cubies),
 

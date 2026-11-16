@@ -60,8 +60,8 @@ There are two ways:
    cube itself.
 3. **Solve it.** Click **Solve** (or press `Space`). cubejs computes the shortest
    solution and the cube animates back to order one move at a time, while the
-   **Move Log** highlights the move currently being executed. Status returns to
-   **Solved**.
+   **Move Log** lights up each move-button in turn as that face turns. Status
+   returns to **Solved**.
 4. **Explore.** Step forward/backward through any solution, load a scramble from a
    file, or reset and try again.
 
@@ -84,9 +84,13 @@ The interface is a dark, glassy overlay floating over the 3D viewport.
   counter.
 
 ### Right control panel
-- **Move Log** — a scrolling list of the move notations executed this session
-  (e.g. `R U R' U'`), with the move currently being animated highlighted. A count
-  of total moves is shown at the top of the card.
+- **Move Log** — the executed moves shown as a **grid of move-buttons, 5 per
+  row** (each button is one token like `R`, `U'`, `F2`), styled to match the
+  face buttons. As a scramble or solve animates, the button for the move being
+  turned **highlights first, then the face turns, then the next one** — earlier
+  moves show as done, later ones as pending. A count of total moves is shown at
+  the top of the card, and the panel **scrolls** when the grid is taller than the
+  panel.
 - **Animation speed** — a slider (0.3×–3×) that controls how fast every
   scramble/solve/turn animates.
 - **Load Scramble** — *Load a scramble file…* opens a file picker for
