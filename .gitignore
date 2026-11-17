@@ -11,18 +11,5 @@ Icon\?
 .Trashes
 .VolumeIcon.icns
 
-
 # ignore downloaded node modules
 node_modules/
-
-# one-off debug / diagnostic probes from development
-# (the real tooling lives in tools/verify.js and tools/render-screenshot.js)
-tools/boot-probe.js
-tools/gl-diag.js
-tools/dl-test.js
-tools/dl-test2.js
-tools/clean-hook.js
-tools/pngstat.py
-
-# stray test screenshot artifacts produced by the ignored probes
-docs/screenshots/_test*.png
