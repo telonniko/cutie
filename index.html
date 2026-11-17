@@ -978,8 +978,8 @@
   });
 
   // --- Keyboard shortcuts ---
-  const KEY = { ' ': 'solve', s: 'scramble', r: 'reset', f: 'fwd', b: 'bwd',
-                u: 'U', d: 'D', l: 'L', r2: 'R', f2: 'F', b2: 'B' };
+  const KEY = { ' ': 'solve', s: 'scramble', 0: 'reset',
+                u: 'U', d: 'D', l: 'L', r: 'R', f: 'F', b: 'B' };
   addEventListener('keydown', e => {
     if (e.target.matches('input, textarea')) return;
     if (e.key === 'ArrowRight') { stepForward(); e.preventDefault(); return; }
@@ -989,12 +989,9 @@
       userTurn(face, e.shiftKey ? 2 : 0);
       return;
     }
-    const k = e.key.toLowerCase();
-    if (k === ' ' || e.code === 'Space') { solve(); e.preventDefault(); return; }
-    if (k === 's') scramble();
-    else if (k === 'r') resetCube();
-    else if (k === 'f') stepForward();
-    else if (k === 'b') stepBackward();
+    if (e.key === ' ' || e.code === 'Space') { solve(); e.preventDefault(); return; }
+    if (e.key === '0') { resetCube(); return; }
+    if (e.key === 's') scramble();
   });
 
   // Step through a sequence one move at a time. auto=false so each step plays a

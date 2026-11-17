@@ -131,7 +131,7 @@ keeps the buttons responsive across browsers.
 | --- | --- |
 | `Space` | Solve |
 | `S` | Scramble |
-| `R` | Reset |
+| `0` | Reset |
 | `→` | Step forward |
 | `←` | Step backward |
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
@@ -176,7 +176,7 @@ and blank lines are ignored, so they can carry comments.
 ```
 index.html                 The entire app (HTML + CSS + JS, self-contained)
 docs/
-  prompts/cutie.md         The original product specification
+  design/cutie_design.md     The product specification
   scrambled/               Sample scramble files (.txt) for the Load feature
   screenshots/             Solved / scrambled / solved-after captures + gallery
 tools/                     Helper scripts (verify, headless screenshot renderer)
