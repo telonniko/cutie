@@ -1,10 +1,10 @@
 # Cutie — 3D Rubik's Cube Solver
 
 **Cutie** is a single-file, fully client-side 3D Rubik's Cube simulation and
-solver, created by qwen3.8:27b-mlx-4bit.  It renders a real 3×3×3 cube in your browser with **Three.js**, lets you
-scramble and turn it by hand, and then uses **[cubejs](https://www.cs.usc.edu/~pwadler/cubelys/cubejs.html)**
-to compute and animate the exact sequence of moves that solves it — step by step,
-on screen.
+solver, created with qwen3.8:27b-mlx-4bit. [Try it here](https://telonniko.github.io/cutie/).  It renders a real 
+3×3×3 cube in your browser with **Three.js**, lets you scramble and turn it by hand, and then uses 
+**[cubejs](https://www.cs.usc.edu/~pwadler/cubelys/cubejs.html)** to compute and animate the exact sequence of 
+moves that solves it — step by step, on screen.
 
 Everything runs locally: no backend, no build step. Just open `index.html`.
 
