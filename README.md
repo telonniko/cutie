@@ -24,29 +24,9 @@ Open the [gallery](docs/screenshots/index.html) for larger, captioned versions.
 
 ## How to run
 
-There are two ways:
-
-1. **Double-click `index.html`** in your file manager and open it in a modern
-   browser (Chrome, Edge, Firefox, or Safari). This is all you need for the
-   core game.
-2. **Serve it over HTTP** (recommended, because the *Load scramble file* feature
-   reads local files):
-
-   ```bash
-   # from the project root
-   python3 -m http.server 8000
-   # then open http://localhost:8000 in your browser
-   ```
-
-   A `package.json` is included for convenience:
-
-   ```bash
-   npm start          # runs the python http server on port 8000
-   ```
-
-> **Note on loading scramble files:** browsers block reading local files when a
-> page is opened via `file://`, so the *Load a scramble file…* button needs the
-> HTTP server (option 2). Scrambling and solving work fine from `file://`.
+Double-click `index.html` in your file manager and open it in a modern browser
+(Chrome, Edge, Firefox, or Safari). That's all you need — every feature
+(scramble, solve, step, reset) runs locally with no server and no build step.
 
 ---
 
@@ -62,8 +42,8 @@ There are two ways:
    solution and the cube animates back to order one move at a time, while the
    **Move Log** lights up each move-button in turn as that face turns. Status
    returns to **Solved**.
-4. **Explore.** Step forward/backward through any solution, load a scramble from a
-   file, or reset and try again.
+4. **Explore.** Step forward/backward through any solution, or reset and try
+   again.
 
 ---
 
@@ -94,9 +74,6 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   panel.
 - **Animation speed** — a slider (0.3×–3×) that controls how fast every
   scramble/solve/turn animates.
-- **Load Scramble** — *Load a scramble file…* opens a file picker for
-  `.txt` / `.cubetext` / `.alg` files containing move notation
-  (e.g. `U R2 F' D`). The cube animates that sequence from the solved state.
 - **Primary actions** (bottom of panel):
   | Button | Action |
   | --- | --- |
@@ -149,10 +126,7 @@ Moves use standard **Singmaster notation**:
 | `X'` | `X` face, counter-clockwise (e.g. `R'`) |
 | `X2` | `X` face, 180° half turn (e.g. `F2`) |
 
-Move notation is what the **Move Log** shows and what **Load Scramble** reads.
-The included scramble files live in [`docs/scrambled/`](docs/scrambled/)
-(`scramble-1.txt`, `scramble-2.txt`, `scramble-3.txt`); lines starting with `#`
-and blank lines are ignored, so they can carry comments.
+Move notation is what the **Move Log** shows.
 
 ---
 
@@ -168,20 +142,6 @@ and blank lines are ignored, so they can carry comments.
   (`Cube.fromString(...).solve()`), and animates the returned move sequence.
 - The UI (Tailwind), rendering (Three.js), and solver (cubejs) are all pulled in
   from CDNs, keeping the whole app in one `index.html` file.
-
----
-
-## Repository layout
-
-```
-index.html                 The entire app (HTML + CSS + JS, self-contained)
-docs/
-  design/cutie_design.md     The product specification
-  scrambled/               Sample scramble files (.txt) for the Load feature
-  screenshots/             Solved / scrambled / solved-after captures + gallery
-tools/                     Helper scripts (verify, headless screenshot renderer)
-package.json               `npm start` (http server) + dev dependencies
-```
 
 ---
 

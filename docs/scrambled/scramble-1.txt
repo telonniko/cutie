@@ -1,8 +1,0 @@
-# Cutie scrambled-position test file
-# Standard Singmaster notation, applied in order to a SOLVED cube to reach
-# this scrambled state. Lines beginning with '#' and blank lines are ignored.
-#
-# Faces: U D L R F B    Suffix: '' = counter-clockwise quarter, '2' = half turn
-#
-# A quick, medium-length scramble.
-F2 R D' F2 B' R U' B' L B R2 F L2 R F R2 D' L R D F' B' U' L

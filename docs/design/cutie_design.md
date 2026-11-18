@@ -114,12 +114,6 @@ Two vertical columns:
 - **Step backward**: animates the inverse of the last move, removes it from the
   log, re-queues the original (with its correct index) so Step → can replay it.
 
-### Load scramble file
-- A "Load a scramble file…" button opens a native file picker accepting
-  `.txt` / `.cubetext` / `.alg`. Parsed with `parseAlg()` (ignores `#` comments
-  and blank lines). The cube resets to solved first, then animates the loaded
-  sequence. Invalid files show a toast error.
-
 ### Animation speed slider
 - Range slider (0.3–3, step 0.1, default 1.0) with "Slow"/"Fast" labels.
   Displayed as e.g. `1.0×`.
@@ -146,7 +140,7 @@ Two vertical columns:
   visual states — **pending** (dim), **past** (faint done), **current** (bright
   amber highlight). Scrolls when tall; current button auto-scrolls into view.
   Empty state shows a placeholder message.
-- **Animation speed**, **Load Scramble**, and **Primary actions** sections
+- **Animation speed**, and **Primary actions** sections
   (described in §4).
 
 ### Face buttons panel (left edge)
@@ -178,18 +172,7 @@ Repeat events are ignored for face turns.
 
 ---
 
-## 7. Scramble Files
-
-Create three text files under `docs/scrambled/` (`scramble-1.txt`,
-`scramble-2.txt`, `scramble-3.txt`). Each contains a **randomly generated**
-scramble sequence in Singmaster notation, applied in order to a solved cube.
-Vary the length across the three files (e.g. medium, medium, longer). Each file
-has a comment header (lines starting with `#`) explaining the format; lines
-starting with `#` and blank lines are ignored at parse time.
-
----
-
-## 8. Testing
+## 7. Testing
 
 ### `window.__RUBIKS__` hook
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
@@ -225,7 +208,7 @@ Run: `node tools/render-screenshot.js`.
 
 ---
 
-## 9. Screenshot Gallery
+## 8. Screenshot Gallery
 
 Create `docs/screenshots/index.html` — a standalone gallery page showing the
 three screenshots (solved, scrambled, solved-after) in a 3-column grid with
@@ -234,17 +217,17 @@ dark theme matching the app.
 
 ---
 
-## 10. README.md
+## 9. README.md
 
 Create a `README.md` in the project root with: title and description,
-screenshot table + gallery link, how to run (double-click or `python3 -m
-http.server`), how to play (4 steps), UI description, keyboard shortcuts table,
+screenshot table + gallery link, how to run (double-click `index.html`), how to
+play (4 steps), UI description, keyboard shortcuts table,
 move notation explanation, how it works, and a tech list (Three.js, cubejs,
 Tailwind, vanilla JS).
 
 ---
 
-## 11. Key Implementation Notes
+## 10. Key Implementation Notes
 
 - **Single file**: the entire app is `index.html` — HTML + embedded CSS +
   embedded JS. No build step, no bundler.

@@ -1,0 +1,90 @@
+# Dev Tools
+
+Helper scripts for **Cutie** — the single-file Rubik's Cube solver. None of these
+are needed to *use* the app (double-click `index.html` in a browser); they are
+developer tooling for verifying the cube math, exercising the UI, and producing
+the documentation screenshots. Run everything from the **project root**.
+
+| Script | What it does | Needs | Run it with |
+| --- | --- | --- | --- |
+| `verify.js` | Unit-tests the cube-core math | Node, `cubejs` | `npm run verify` or `node tools/verify.js` |
+| `press-test.js` | Exercises the face-button UI | Node, Playwright + Chromium | `node tools/press-test.js` |
+| `render-screenshot.js` | Captures the project screenshots | Node, Playwright + Chromium, ImageMagick | `npm run screenshot` or `node tools/render-screenshot.js` |
+
+## Prerequisites
+
+Install the dev dependencies from the project root:
+
+```bash
+npm install                          # installs the devDependencies (cubejs, playwright)
+npx playwright install chromium      # downloads the headless Chromium binary
+```
+
+`cubejs` and `playwright` are declared in `package.json` under
+`devDependencies`, so a plain `npm install` is enough — there is no need for
+`npm install --save-dev …` (that would just re-pin the versions and drift the
+lockfile). Note that a *production* install (`npm install --omit=dev`) skips
+these, since they are dev-only.
+
+- `verify.js` needs **`cubejs`** (a devDependency, used only by the tooling —
+  the app itself loads cubejs from a CDN).
+- `press-test.js` and `render-screenshot.js` need **Playwright** and a headless
+  Chromium. On macOS, **ImageMagick** (`magick` / `convert`) is also required by
+  `render-screenshot.js` to composite the cube frame over the UI.
+
+## verify.js
+
+Proves that the cube-core geometry inlined in `index.html` exactly matches
+cubejs's model. It:
+
+1. extracts the code between the `// === CUBE:START ===` /
+   `// === CUBE:END ===` sentinels in `index.html`,
+2. evaluates it in a fresh Node VM context (the core has **no DOM/Three.js
+   dependencies** — it is pure math),
+3. compares `readFaceletString()` output to `Cube.fromString/asString` and runs
+   full solve round-trips through cubejs.
+
+The core must stay between those two sentinels for this to work.
+
+## press-test.js
+
+Playwright-driven tests for the face-button behavior (the left-edge controls):
+
+- Pressed (depressed) visual state on pointer down, restored on up.
+- `Shift`+click previews the prime (`U'`); the label always snaps back to the
+  plain letter on release.
+- Half-turn buttons (`U2`, `D2`, …) keep fixed labels and do **not** follow
+  `Shift`.
+- `Cmd`/`Meta` is ignored — only `Shift` primes.
+- A single click on a quarter button turns 90° immediately (no deferral, no
+  double-click detection); a half-turn button turns 180°.
+
+Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
+test hook.
+
+## render-screenshot.js
+
+Headless screenshot harness that produces the three documentation captures in
+`docs/screenshots/` — `solved.png`, `scrambled.png`, `solved-after.png` — by
+compositing the cube's GL frame over the DOM UI:
+
+1. `window.__RUBIKS__.renderFrame()` → raw RGBA pixels from the GL back buffer
+   (headless Chromium does not reliably sync the WebGL `<canvas>` into
+   `page.screenshot()`).
+2. `page.screenshot()` → the DOM UI.
+3. Compose: the cube PNG is overlaid on the UI at the canvas origin via
+   ImageMagick.
+
+The "scrambled" frame uses a fixed, inlined scramble sequence applied to a solved
+cube (the cube can still be scrambled live via the **Scramble** button).
+`window.__RUBIKS__` also exposes `applyAlg`, `readFaceletString`, `syncLog`,
+`clearLog`, `setCamera`, and `setPixelRatio` for this purpose.
+
+## The `window.__RUBIKS__` test hook
+
+The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
+capture: solver readiness/status getters, `applyInstant` / `applyAlg` for instant
+state changes, `setCamera`, `renderFrame` / `readFrame` (raw RGBA pixels,
+bypassing the unreliable 2D-canvas sync in headless Chromium), `syncLog` /
+`clearLog` for the Move Log, and `waitUntilIdle`. The Playwright tools above
+rely on it.
