@@ -39,9 +39,10 @@ function findExecutable() {
   return undefined;
 }
 
-function readScramble(i) {
-  return fs.readFileSync(path.join(ROOT, `docs/scrambled/scramble-${i}.txt`), 'utf8').trim();
-}
+// The "scrambled" screenshot uses this fixed scramble sequence (a representative
+// mid-length shuffle) applied to a solved cube. It used to live in a docs/
+// scrambled file, but the file-loading feature was removed, so it is inlined here.
+const SCRAMBLE_1 = "F2 R D' F2 B' R U' B' L B R2 F L2 R F R2 D' L R D F' B' U' L";
 
 // Convert a base64-encoded raw RGBA pixel buffer to a PNG file via ImageMagick.
 // ImageMagick v7 (magick) reads headerless pixels with `-size WxH -depth 8` and
@@ -99,7 +100,7 @@ async function main() {
   console.log('✓ solved.png       status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
   // ---- 2. Scrambled ----
-  const s1 = readScramble(1);
+  const s1 = SCRAMBLE_1;
   await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), s1);
   // Render the Move Log as a grid of move buttons (all "done") so the shot shows
   // the full scramble sequence, then let the button styles settle before capture.

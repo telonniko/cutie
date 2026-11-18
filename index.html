@@ -122,16 +122,6 @@
       <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Slow</span><span>Fast</span></div>
     </section>
 
-    <!-- Load scrambled file -->
-    <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl px-4 py-3">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Load Scramble</h2>
-      </div>
-      <input id="scramble-file" type="file" accept=".txt,.cubetext,.alg" class="hidden" />
-      <button id="btn-load" class="w-full rounded-lg bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2 text-xs font-medium transition">Load a scramble file…</button>
-      <p class="text-[10px] text-slate-500 mt-2">Pick a <code class="text-slate-400">.txt</code> / <code class="text-slate-400">.cubetext</code> / <code class="text-slate-400">.alg</code> of move notation (e.g. <code class="text-slate-400">U R2 F' D</code>).</p>
-    </section>
-
     <!-- Primary actions -->
     <section class="pointer-events-auto grid grid-cols-2 gap-2">
       <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
@@ -252,7 +242,7 @@
   function parseAlg(str) {
     const out = [];
     // Iterate line by line so whole-line comments (lines starting with '#') and
-    // blank lines are ignored — matches the Cubie scramble-file header format.
+    // blank lines are ignored.
     for (const raw of String(str).split(/\r?\n/)) {
       const line = raw.trim();
       if (!line || line[0] === '#') continue;
@@ -806,35 +796,6 @@
     if (state.busy) setStatus('Solving…', 'solving');
   }
 
-  // Load a scramble from its move-notation text (read from a user-picked file).
-  function loadScrambleText(text) {
-    if (state.busy) return;
-    resetCube();
-    const tokens = parseAlg(text);
-    if (!tokens.length) { toastMsg('No valid moves found in that file (expected notation like U R2 F2 D).'); return; }
-    setStatus('Scrambling…', 'busy');
-    // Show every loaded move as a button, then animate the scramble from solved.
-    runBatch(tokens, 'scramble');
-    if (state.busy) setStatus('Scrambling…', 'busy');
-  }
-
-  // Single “Load” button opens a native file picker; we read the chosen file
-  // locally (no network / no CORS, so it works over file:// too). Wiring is in
-  // the button-binding section below, next to the other button handlers.
-  const scrambleFile = document.getElementById('scramble-file');
-  scrambleFile.addEventListener('change', async () => {
-    const file = scrambleFile.files[0];
-    scrambleFile.value = ''; // allow re-picking the same file next time
-    if (!file) return;
-    try {
-      const text = await file.text();
-      loadScrambleText(text);
-    } catch (err) {
-      console.warn('Could not read scramble file', file.name, err);
-      toastMsg('Could not read ' + file.name + ': ' + err.message);
-    }
-  });
-
   let toastTimer;
   function toastMsg(msg) {
     toast.querySelector('span:last-child').textContent = msg;
@@ -966,7 +927,6 @@
   document.getElementById('btn-reset').onclick = resetCube;
   document.getElementById('btn-stepfwd').onclick = stepForward;
   document.getElementById('btn-stepbwd').onclick = stepBackward;
-  document.getElementById('btn-load').onclick = () => scrambleFile.click();
 
   const speed = document.getElementById('speed');
   const speedVal = document.getElementById('speed-val');
