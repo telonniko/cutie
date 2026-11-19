@@ -40,10 +40,13 @@ Double-click `index.html` in your file manager and open it in a modern browser
    the cube only orbits the camera).
 3. **Solve it.** Click **Solve** (or press `Space`). cubejs computes the shortest
    solution and the cube animates back to order one move at a time, while the
-   **Move Log** lights up each move-button in turn as that face turns. Status
-   returns to **Solved**.
-4. **Explore.** Step forward/backward through any solution, or reset and try
-   again.
+   **Move Log** lights up each move-button in turn as that face turns. The log
+   is **cleared first** so it shows just the solution — and it solves the cube as
+   it *currently* is, so it works even after you've stepped back or turned a
+   face by hand. Status returns to **Solved**.
+4. **Explore.** Step forward/backward to move a **current step** cursor through
+   the log (the cube always reflects moves up to that step). Turn a face to
+   branch the log from the current step, or reset and try again.
 
 ---
 
@@ -68,8 +71,9 @@ The cube itself is **view-only** — turns come from the **face buttons** and
 - **Move Log** — the executed moves shown as a **grid of move-buttons, 5 per
   row** (each button is one token like `R`, `U'`, `F2`), styled to match the
   face buttons. As a scramble or solve animates, the button for the move being
-  turned **highlights first, then the face turns, then the next one** — earlier
-  moves show as done, later ones as pending. A count of total moves is shown at
+  turned **highlights first, then the face turns, then the next one** — moves
+  before the current step show as done, moves after it as pending. A count of
+  total moves is shown at
   the top of the card, and the panel **scrolls** when the grid is taller than the
   panel.
 - **Animation speed** — a slider (0.3×–3×) that controls how fast every
@@ -77,10 +81,10 @@ The cube itself is **view-only** — turns come from the **face buttons** and
 - **Primary actions** (bottom of panel):
   | Button | Action |
   | --- | --- |
-  | **Scramble** | Apply a random scramble with animation. |
-  | **Solve** | Compute and animate the solution step-by-step. |
-  | **Step →** | Advance the current solve/scramble queue by one move. |
-  | **← Step** | Walk back through the move log one move at a time. |
+  | **Scramble** | Apply a random scramble with animation (clears the log first). |
+  | **Solve** | Clear the log, then compute + animate the solution for the cube as it is now. |
+  | **Step →** | Advance the current step one move (replay the next move in the log). |
+  | **← Step** | Step the current position back one move (undo, keeping it in the log to replay). |
   | **Reset** | Instantly return the cube to the solved state. |
 
 ### Face buttons (left edge) — a slide-out drawer
@@ -153,8 +157,13 @@ Move notation is what the **Move Log** shows.
 - Turns rotate a *slice* of cubies with a smooth 3D animation; the internal state
   is kept in **facelet** form (`UUUUUUUURRRRRRRRFFFFFFFDDDDDDDDLLLLLLLLLBBBBBBBBB`)
   so the cube's representation matches the solver exactly.
-- **Solving** reads the cube's facelet string, hands it to cubejs
-  (`Cube.fromString(...).solve()`), and animates the returned move sequence.
+- **Solving** clears the Move Log, then reads the cube's facelet string for its
+  current physical state, hands it to cubejs (`Cube.fromString(...).solve()`),
+  and animates the returned move sequence from where the cube currently is.
+  Stepping back/forward or a hand turn moves a **current step** cursor through the
+  log — the cube always reflects moves up to that step, and a hand turn branches
+  the log from it (discarding any later moves) — so Solve always starts from the
+  cube as it actually is.
 - The UI (Tailwind), rendering (Three.js), and solver (cubejs) are all pulled in
   from CDNs, keeping the whole app in one `index.html` file.
 

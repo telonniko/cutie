@@ -5,6 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "verify": "node tools/verify.js",
+    "verify:cursor": "node tools/verify-cursor.js",
     "screenshot": "node tools/render-screenshot.js"
   },
   "devDependencies": {
