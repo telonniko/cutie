@@ -102,11 +102,13 @@ const app = {
 // --- Scenario the bug report describes: scramble, step back 3, solve ---
 console.log('Scenario A: scramble, step back 3, solve from the stepped state');
 app.scramble();
-assert(app.cursor === 20 && app.moves.length === 20, 'scramble applied 20 moves');
+const nA = app.moves.length;
+assert(nA >= 18 && nA <= 35, `scramble applied a random 18..35 moves (got ${nA})`);
+assert(app.cursor === nA, 'cursor == move count after scramble');
 app.stepBackward(); app.stepBackward(); app.stepBackward();
-assert(app.cursor === 17, `cursor stepped back to 17 (got ${app.cursor})`);
-assert(app.moves.length === 20, 'future moves kept in the log (20)');
-assert(app.invariant(), 'cube == moves[0..16] (physical state tracks cursor)');
+assert(app.cursor === nA - 3, `cursor stepped back to ${nA - 3} (got ${app.cursor})`);
+assert(app.moves.length === nA, `future moves kept in the log (${nA})`);
+assert(app.invariant(), 'cube == moves[0..cursor-1] (physical state tracks cursor)');
 assert(!isSolved(app.cubies), 'cube is NOT solved at the stepped-back state');
 const sol = app.solve();
 assert(isSolved(app.cubies), 'cube IS solved after solve() from the stepped-back state');
@@ -116,11 +118,12 @@ console.log(`    (solution had ${sol.length} moves; final log length ${app.moves
 // --- Scenario B: scramble, step back, then a hand turn branches the log ---
 console.log('Scenario B: scramble, step back 2, hand-turn, solve');
 app.scramble();
+const nB = app.moves.length;
 app.stepBackward(); app.stepBackward();
-assert(app.cursor === 18, `cursor at 18 (got ${app.cursor})`);
+assert(app.cursor === nB - 2, `cursor at ${nB - 2} (got ${app.cursor})`);
 app.userTurn('U', 0);
-assert(app.moves.length === 19, 'hand turn discarded the 2 future moves and appended one (19 total)');
-assert(app.cursor === 19, `cursor advanced to 19 (got ${app.cursor})`);
+assert(app.moves.length === nB - 1, `hand turn discarded the 2 future moves and appended one (${nB - 1} total)`);
+assert(app.cursor === nB - 1, `cursor advanced to ${nB - 1} (got ${app.cursor})`);
 assert(app.invariant(), 'cube tracks the new branched log');
 app.solve();
 assert(isSolved(app.cubies), 'cube solved after hand-branch + solve');

@@ -787,7 +787,7 @@
     const mods = ['', '2', "'"];
     const seq = [];
     let last = null;
-    const N = 20;
+    const N = 18 + Math.floor(Math.random() * (35 - 18 + 1)); // random 18..35 inclusive
     for (let i = 0; i < N; i++) {
       let f;
       do { f = faces[Math.floor(Math.random()*6)]; } while (f === last);
