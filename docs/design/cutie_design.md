@@ -187,9 +187,12 @@ on desktop.
 | `Alt` + `U` `D` `L` `R` `F` `B` | Turn that face 180° (half turn) |
 | `T` | Toggle the layer-button drawer open / closed |
 
-Face-turn keys are matched via `e.key.toUpperCase()`, so any of `U D L R F B`
-turns that face (`Shift` for the counter-clockwise prime, `Alt`/`Option` for the
-180° half turn — directionless, so it wins over `Shift` when both are held). Input
+Face-turn keys are matched via `e.code` (physical key, e.g. `KeyU`), not
+`e.key` (composed character).  On macOS `Option+U` sets `e.key` to the
+composed glyph (`µ` in Latin-1), so the check would miss; `e.code` is
+unaffected by modifiers or locale.  Any of `U D L R F B` turns that face
+(`Shift` for the counter-clockwise prime, `Alt`/`Option` for the 180° half
+turn — directionless, so it wins over `Shift` when both are held).  Input
 fields are ignored, and repeat events are ignored for face turns.
 
 ---
