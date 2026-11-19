@@ -953,9 +953,18 @@
     if (e.target.matches('input, textarea')) return;
     if (e.key === 'ArrowRight') { stepForward(); e.preventDefault(); return; }
     if (e.key === 'ArrowLeft')  { stepBackward(); e.preventDefault(); return; }
-    const face = e.key.toUpperCase();
+    // Use e.code (physical key: 'KeyU', 'KeyD', …) rather than e.key
+    // (composed character).  On macOS, Option+U produces e.key === 'µ'
+    // (or another locale-specific glyph), so the check against ['U'…'B']
+    // would miss; e.code is unaffected by modifiers or locale.
+    const face = e.code.slice(3);
     if (['U','D','L','R','F','B'].includes(face) && !e.repeat) {
-      userTurn(face, e.shiftKey ? 2 : 0);
+      // Bare face = 90° clockwise; Shift = 90° counter-clockwise (prime);
+      // Alt/Option = 180° half turn. The half turn is directionless, so it
+      // takes precedence over Shift when both modifiers are held.
+      const power = e.altKey ? 1 : (e.shiftKey ? 2 : 0);
+      userTurn(face, power);
+      e.preventDefault();
       return;
     }
     if (e.key === ' ' || e.code === 'Space') { solve(); e.preventDefault(); return; }
