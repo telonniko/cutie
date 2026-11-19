@@ -50,14 +50,15 @@ The core must stay between those two sentinels for this to work.
 
 Playwright-driven tests for the face-button behavior (the left-edge controls):
 
+- Three columns of buttons: clockwise quarter turns (`U…B`),
+  counter-clockwise quarter turns (`U'…B'`), and half-turns (`U2…B2`).
+- Each button is one fixed move; labels are fixed (no `Shift`-driven prime
+  preview, no ambient repaint).
 - Pressed (depressed) visual state on pointer down, restored on up.
-- `Shift`+click previews the prime (`U'`); the label always snaps back to the
-  plain letter on release.
-- Half-turn buttons (`U2`, `D2`, …) keep fixed labels and do **not** follow
-  `Shift`.
-- `Cmd`/`Meta` is ignored — only `Shift` primes.
-- A single click on a quarter button turns 90° immediately (no deferral, no
-  double-click detection); a half-turn button turns 180°.
+- A single click on a quarter or prime button turns 90° immediately (no
+  deferral, no double-click detection); a half-turn button turns 180°.
+- The panel hides behind a tab; clicking the tab (or pressing `T`) slides it
+  open and closed (works on iPad with no keyboard).
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.

@@ -40,8 +40,7 @@ function findExecutable() {
 }
 
 // The "scrambled" screenshot uses this fixed scramble sequence (a representative
-// mid-length shuffle) applied to a solved cube. It used to live in a docs/
-// scrambled file, but the file-loading feature was removed, so it is inlined here.
+// mid-length shuffle) applied to a solved cube.
 const SCRAMBLE_1 = "F2 R D' F2 B' R U' B' L B R2 F L2 R F R2 D' L R D F' B' U' L";
 
 // Convert a base64-encoded raw RGBA pixel buffer to a PNG file via ImageMagick.
@@ -93,23 +92,38 @@ async function main() {
     execFileSync('magick', [uiPng, cubePng, '-compose', 'over', '-gravity', 'NorthWest', '-geometry', '+0+0', '-composite', path.join(OUT, name)]);
   }
 
-  // ---- 1. Solved (initial state) ----
+  // ---- Drawer (layer-button panel) state per shot -------------------------
+  // The scrambled shot shows the open panel (the buttons in use); the solved and
+  // solved-after shots keep it hidden so the viewport stays clean.  Clicking the
+  // tab is the real user gesture (it works on iPad with no keyboard).
+  async function setDrawer(open) {
+    const isOpen = await page.evaluate(
+      () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded') === 'true');
+    if (isOpen !== open) {
+      await page.click('#face-drawer-tab');
+      await page.waitForTimeout(400);   // let the .3s slide settle
+    }
+  }
+
+  // ---- 1. Solved (initial state, panel hidden) ----
+  await setDrawer(false);
   await page.evaluate(() => window.__RUBIKS__.setCamera());
   await page.waitForTimeout(600);
   await snap('solved.png');
   console.log('✓ solved.png       status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
-  // ---- 2. Scrambled ----
+  // ---- 2. Scrambled (panel shown) ----
   const s1 = SCRAMBLE_1;
   await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), s1);
   // Render the Move Log as a grid of move buttons (all "done") so the shot shows
   // the full scramble sequence, then let the button styles settle before capture.
   await page.evaluate(() => window.__RUBIKS__.syncLog());
   await page.waitForTimeout(300);
+  await setDrawer(true);
   await snap('scrambled.png');
   console.log('✓ scrambled.png    status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
-  // ---- 3. Solved-after-solve ----
+  // ---- 3. Solved-after-solve (panel hidden) ----
   const facelets = await page.evaluate(() => window.__RUBIKS__.readFaceletString());
   const solution = await page.evaluate((fl) => window.Cube.fromString(fl).solve(), facelets);
   console.log('   solver => ' + solution + ' (' + solution.split(' ').length + ' moves)');
@@ -119,6 +133,7 @@ async function main() {
   await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), solution);
   await page.evaluate(() => window.__RUBIKS__.syncLog());
   await page.waitForTimeout(300);
+  await setDrawer(false);
   await snap('solved-after.png');
   console.log('✓ solved-after.png status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 

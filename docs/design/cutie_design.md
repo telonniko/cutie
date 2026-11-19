@@ -56,9 +56,8 @@ The cube state is tracked in **facelet string** form matching cubejs exactly
 (54 chars, 9 per face in cubejs order U, R, F, D, L, B).
 
 ### Core API
-- `buildCubies()`, `applyMove(cubies, face, power)`, `applyAlg(cubies, alg)`,
-  `parseAlg(str)`, `invertAlg(str)`, `readFaceletString(cubies)`,
-  `isSolved(cubies)`.
+- `buildCubies()`, `applyMove(cubies, face, power)`, `parseAlg(str)`,
+  `readFaceletString(cubies)`, `isSolved(cubies)`.
 - `MOVES` table defines each face's rotation axis, layer coordinate, and sign.
 - `parseAlg` ignores lines starting with `#` and blank lines.
 
@@ -76,23 +75,38 @@ Standard **Singmaster notation**: `U D L R F B`, `'` (counter-clockwise),
 
 ## 4. User Interactions & Controls
 
-### Face buttons (left edge, vertically centered)
-Two vertical columns:
+### Face buttons (left edge) — a slide-out drawer
+The face buttons live in a **panel that hides behind a tab** on the left edge, so
+the viewport stays clear. The tab is a vertical **"Turn a layer"** handle (like a
+binder tab) on the panel's **right** edge; it is always visible, and the panel
+slides in from the left when opened:
 
-- **Left — quarter turns (`U D L R F B`)**: click = clockwise 90°. Shift+click
-  = counter-clockwise (`U'`). While Shift is held, every button **displays its
-  prime label** and the label **stays primed after a click** as long as Shift
-  is held. Cmd/Meta is ignored (on macOS it is the right-click modifier).
+- **Tap the tab** to slide the panel out; **tap it again** to slide it back. The
+  toggle is a `click` on a real `<button>`, so it works with a tap on iPad with
+  no keyboard. **`T`** toggles the same drawer from the keyboard.
+- **Tab is not the shortcut**: it drives browser focus navigation and the primary
+  action buttons are focusable, so `T` is used instead.
+
+When open, the panel shows three vertical columns: each button is **one fixed
+move**, so a tap always does exactly one thing with no modifier — important on
+touch devices (e.g. iPad) that have no Shift key:
+
+- **Left — clockwise quarter turns (`U D L R F B`)**: each is a single 90° turn.
+- **Middle — counter-clockwise quarter turns (`U' D' L' R' F' B'`)**: each is a
+  single 90° prime.
 - **Right — half turns (`U2 D2 L2 R2 F2 B2`)**: each is a single 180° turn.
-  Labels are fixed (a 180° has no direction) and do **not** follow the Shift
-  prime preview.
+- Labels are fixed (a 180° has no direction, and the prime is its own button), so
+  there is no modifier to watch and nothing to repaint.
 - Each button has a **pressed visual state** (darker fill, inset shadow, slight
   push-down) on pointer down, snapping back on release.
 - **No double-click detection**: there are no `dblclick` listeners or deferred
   timers. A click is exactly one move.
 - Turns fire on **`pointerup`** (Pointer Events), not `click`, because Safari
   can suppress/defer `click` after a tap. `pointercancel`/`pointerleave`
-  un-depresses without turning.
+  un-depress without turning.
+
+The face **keys** (`U D L R F B`, `Shift` + a face key for the prime) still work
+as keyboard shortcuts on desktop.
 
 ### Primary actions (right panel, bottom)
 | Button | Action |
@@ -144,8 +158,12 @@ Two vertical columns:
   (described in §4).
 
 ### Face buttons panel (left edge)
-- Glassy panel with "Turn a layer" label, two button columns, and a
-  "Shift+click = counter" hint. Fade-in on load.
+- A **slide-out drawer**: hidden at start, only a vertical "Turn a layer" tab is
+  visible on the panel's right edge. Tapping the tab (or pressing `T`) slides the
+  panel out; tapping again slides it back. The tab is the rightmost child, so
+  hiding the panel (sliding it left) leaves the tab on screen.
+- Glassy panel, three button columns (clockwise quarter, counter-clockwise
+  quarter, half). No top label — the tab *is* the "Turn a layer" label.
 
 ### Misc
 - **Drag-to-rotate hint**: small pill "Drag to orbit · Scroll to zoom".
@@ -165,10 +183,11 @@ Two vertical columns:
 | `←` | Step backward |
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U` `D` `L` `R` `F` `B` | Turn that face counter-clockwise |
+| `T` | Toggle the layer-button drawer open / closed |
 
-Face-turn keys are checked via `e.key.toUpperCase()` before command keys, so
-`R`, `F`, `B` trigger face turns, not commands. Input fields are ignored.
-Repeat events are ignored for face turns.
+Face-turn keys are matched via `e.key.toUpperCase()`, so any of `U D L R F B`
+turns that face (`Shift` for the counter-clockwise prime). Input fields are
+ignored, and repeat events are ignored for face turns.
 
 ---
 
@@ -190,14 +209,14 @@ Run: `node tools/verify.js`.
 
 ### `tools/press-test.js`
 Playwright tests for face-button behavior:
-- Pressed visual state on quarter and half-turn buttons.
-- Shift-click primes quarter labels; half-turn labels stay fixed regardless.
-- Ambient prime (Shift held primes all quarter labels; release restores).
-- Shift+click keeps label primed after release.
-- Cmd/Meta is ignored.
-- Action: four single quarter clicks return to solved (4 × 90° = 360°).
+- Pressed visual state on quarter, prime, and half-turn buttons.
+- Labels are fixed (no Shift-driven prime preview, no ambient repaint).
+- Action: four single clockwise quarter clicks return to solved (4 × 90° = 360°).
 - Action: two half-turn clicks return to solved (2 × 180° = 360°).
-- Action: four Shift+quarter clicks return to solved (4 × 90° counter = 360°).
+- Action: four single prime (counter-clockwise) clicks return to solved
+  (4 × 90° counter = 360°).
+- The drawer starts closed; clicking the tab and pressing `T` each toggle it
+  open / closed (works on iPad with no keyboard).
 - Run: `node tools/press-test.js`.
 
 ### `tools/render-screenshot.js`
@@ -235,9 +254,22 @@ Tailwind, vanilla JS).
   import). cubejs loads as classic `<script>` tags before the module script.
 - **Pointer Events, not click**: face buttons use `pointerdown`/`pointerup`
   because Safari can suppress `click` after a tap.
-- **No double-click detection**: a click is exactly one move. Half-turns are a
-  separate column of buttons.
-- **Shift = prime**: only Shift is the prime modifier. Cmd/Meta is ignored.
+- **No double-click detection**: a click is exactly one move. Quarter, prime,
+  and half-turns are each their own column of buttons.
+- **No Shift-driven UI**: counter-clockwise quarter turns are their own column
+  of buttons (`U'…B'`), so no modifier is needed for the on-screen controls. The
+  face *keys* keep `Shift` as the prime modifier for desktop keyboards.
+- **Drawer, not a static panel**: the layer buttons hide behind a vertical tab
+  (panel's right edge). The horizontal slide lives on an inner `.drawer-unit`
+  transform so it never fights the outer element's vertical centering. Toggle is
+  a `click` on the tab (works on iPad, no keyboard) or the `T` key.
+- **Drawer first-load race**: Tailwind loads via the runtime **Play CDN
+  `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
+  module first runs. Measuring the closed shift that early is too small and
+  leaves the panel peeking. The shift is therefore kept at a fully-hidden CSS
+  default until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable
+  width; auto re-measurements snap (no slide), so the panel never visibly slides
+  or peeks on first load.
 - **Batch animation**: scramble and solve enqueue the entire sequence up front
   (so the Move Log shows all buttons at once), then auto-advance. Step mode
   plays one move and stops.

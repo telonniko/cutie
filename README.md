@@ -83,22 +83,34 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   | **← Step** | Walk back through the move log one move at a time. |
   | **Reset** | Instantly return the cube to the solved state. |
 
-### Face buttons (left edge)
-Two vertical columns of buttons, centered on the left side of the screen. Each
-button turns its layer on the live cube the moment it is **released**:
+### Face buttons (left edge) — a slide-out drawer
+The face buttons live in a panel that **hides behind a tab** on the left edge,
+so the cube viewport stays clear. The tab is a vertical **"Turn a layer"**
+handle (like a tab in a binder) that sits on the panel's **right** edge; it is
+always visible, and the panel itself slides in from the left when opened:
 
-- **Left column — quarter turns: `U D L R F B`.**
-  - **Click** = clockwise quarter turn (`U`).
-  - **Shift + click** = counter-clockwise (`U'`).
+- **Tap the tab** to slide the panel out and reveal the buttons; **tap it again**
+  to slide it back. The toggle is a `click` on a real `<button>`, so it works
+  with a tap on iPad with no keyboard.
+- **`T`** toggles the same drawer from the keyboard. (Tab is not used: it
+  drives browser focus navigation, and the primary action buttons are focusable.)
+
+When open, the panel shows three vertical columns of buttons. Each button is
+**one fixed move**, so a tap always does exactly one thing with no modifier —
+this matters on touch devices (e.g. iPad) that have no Shift key. Each button
+turns its layer on the live cube the moment it is **released**:
+
+- **Left column — clockwise quarter turns: `U D L R F B`.** Each is a 90° turn.
+- **Middle column — counter-clockwise quarter turns: `U' D' L' R' F' B'`.** Each is a 90° prime.
 - **Right column — half turns: `U2 D2 L2 R2 F2 B2`.** Each is a 180° turn.
 
-While **Shift** is held, the quarter-turn buttons display their prime
-(counter-clockwise) label so you can see what the next click will do. The
-half-turn buttons are fixed — a 180° has no direction.
+Labels are fixed (a 180° has no direction, and the prime is its own button), so
+there is no modifier to watch and nothing to repaint.
 
 The turns fire on **pointer release**, not the browser's synthesized `click`
 event: Safari can drop that event after a tap, so triggering on `pointerup`
-keeps the buttons responsive across browsers.
+keeps the buttons responsive across browsers. On desktop, the face keys
+(`U D L R F B`, `Shift` + a face key for the prime) still work as shortcuts.
 
 ---
 
@@ -113,6 +125,7 @@ keeps the buttons responsive across browsers.
 | `←` | Step backward |
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U D L R F B` | Turn that face counter-clockwise |
+| `T` | Toggle the layer-button drawer open / closed |
 
 ---
 

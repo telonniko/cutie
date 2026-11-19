@@ -48,11 +48,15 @@ vm.runInContext(core, sandbox, { filename: 'cube-core' });
 const Cube = sandbox.Cube;
 const Core = sandbox.CubeCore;
 const buildCubies = Core && Core.buildCubies;
-const applyAlg = Core && Core.applyAlg;
 const applyMove = Core && Core.applyMove;
+const parseAlg = Core && Core.parseAlg;
 const readFaceletString = Core && Core.readFaceletString;
 const isSolved = Core && Core.isSolved;
-if (!buildCubies || !readFaceletString || !Cube) { console.error('Failed to evaluate core / load cubejs'); process.exit(1); }
+// applyAlg is no longer part of the core (it was a one-shot wrapper left over
+// from the removed load-scramble-file feature); apply a whole sequence with the
+// two primitives the live app actually uses: parseAlg + applyMove.
+const applyAlg = (cubies, alg) => { for (const { face, power } of parseAlg(alg)) applyMove(cubies, face, power); };
+if (!buildCubies || !applyMove || !parseAlg || !readFaceletString || !Cube) { console.error('Failed to evaluate core / load cubejs'); process.exit(1); }
 
 const FACES = ['U', 'D', 'L', 'R', 'F', 'B'];
 const MODS = ['', '2', "'"];
