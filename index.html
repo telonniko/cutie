@@ -39,6 +39,17 @@
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.03);
     transform: translateY(2px) scale(0.94);
   }
+  /* Layer-button drawer: the panel slides in/out horizontally. The outer fixed
+     element owns the vertical centering (-translate-y-1/2), so the horizontal
+     slide lives here on its own transform. .drawer-closed translates the unit
+     left by --drawer-shift (set in JS: unit width minus the tab width) so the
+     rightmost tab stays on screen. The default is a large negative value so that
+     before JS measures the exact offset, the panel starts fully hidden rather
+     than flashing at the edge. */
+  .drawer-unit { transition: transform .3s ease; --drawer-shift: -32rem; }
+  .drawer-closed { transform: translateX(var(--drawer-shift)); }
+  /* The tab reads vertically, like a binder tab on the panel's right edge. */
+  .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
   /* Move-log buttons: a compact grid of move tokens (5 per row), styled to
      match the face buttons. Three visual states driven by state.playIndex:
        pending — a move not yet reached (muted, dimmed)
@@ -132,16 +143,33 @@
     </section>
   </aside>
 
-  <!-- ======================= Face buttons (left edge, vertically centered) ======================= -->
-  <!-- Two columns: left = quarter/prime turns (U…B), right = 180° half-turns (U2…B2). -->
-  <div class="fixed left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-    <div class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3 fadein">
-      <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Turn a layer</p>
-      <div class="flex items-start gap-1.5">
-        <div id="face-buttons" class="flex flex-col gap-1.5"></div>
-        <div id="half-buttons" class="flex flex-col gap-1.5"></div>
+  <!-- ======================= Face buttons (left edge) — slide-out drawer ======================= -->
+  <!-- Hidden at start: only a vertical "Turn a layer" tab peeks out on the
+       panel's right edge. Click/tap the tab to slide the panel out; click it
+       again (or press 't') to slide it back.  Three columns: clockwise
+       quarter-turns (U…B), counter-clockwise quarter-turns (U'…B'), and 180°
+       half-turns (U2…B2).  Each button is one fixed move, so a tap always does
+       exactly one thing with no modifier — important on touch devices (e.g. iPad)
+       that have no Shift key. -->
+  <div class="fixed left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+    <div id="face-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
+      <!-- The button panel: slides left to hide; the tab sits to its right. -->
+      <div class="pointer-events-auto rounded-l-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3">
+        <div class="flex items-start gap-1.5">
+          <div id="face-buttons" class="flex flex-col gap-1.5"></div>
+          <div id="prime-buttons" class="flex flex-col gap-1.5"></div>
+          <div id="half-buttons" class="flex flex-col gap-1.5"></div>
+        </div>
       </div>
-      <p class="text-[10px] text-slate-600 mt-2">Shift+click = counter</p>
+      <!-- The binder tab: always visible, toggles the drawer on click/tap. A real
+           <button>, so a tap in Safari fires a click (works with no keyboard). -->
+      <button id="face-drawer-tab"
+        class="pointer-events-auto writing-vertical flex items-center justify-center
+               text-[10px] uppercase tracking-wider font-semibold text-slate-300
+               bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 rounded-r-xl
+               px-2 py-3 cursor-pointer select-none touch-manipulation"
+        aria-controls="face-drawer" aria-expanded="false"
+        aria-label="Show or hide the layer buttons">Turn a layer</button>
     </div>
   </div>
 
@@ -254,12 +282,6 @@
     }
     return out;
   }
-  function invertAlg(str) {
-    return parseAlg(str).map(m => ({ face: m.face, power: m.power === 1 ? 1 : (m.power === 0 ? 2 : 0) }))
-      .reverse()
-      .map(m => m.face + (m.power === 1 ? '2' : (m.power === 2 ? "'" : ''))).join(' ');
-  }
-
   // Apply one ±90° step of a move to the moving layer (mutates cubies).
   function applyStep(cubies, move, sign) {
     for (const c of cubies) {
@@ -278,7 +300,6 @@
     const sign = base.sign * (reps > 0 ? 1 : -1);
     for (let i = 0; i < Math.abs(reps); i++) applyStep(cubies, base, sign);
   }
-  function applyAlg(cubies, alg) { for (const { face, power } of parseAlg(alg)) applyMove(cubies, face, power); }
 
   const isOuter = (dir, pos) => dir[0]*pos[0] + dir[1]*pos[1] + dir[2]*pos[2] === 1;
   const SOLVED = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
@@ -299,7 +320,7 @@
   // Expose the pure-model API (used by tools/verify.js in Node; harmless in the
   // browser). `const` declarations don't become properties of the global, so we
   // surface them explicitly.
-  self.CubeCore = { buildCubies, applyMove, applyAlg, readFaceletString, isSolved, parseAlg, MOVES };
+  self.CubeCore = { buildCubies, applyMove, readFaceletString, isSolved, parseAlg, MOVES };
   // === CUBE:END ===
 
   /* ------------------------------------------------------------------------ *
@@ -805,121 +826,111 @@
   }
 
   // --- Face buttons ---
-  // Two columns: quarter/prime turns (U, D, L, R, F, B) and 180° half-turns
-  // (U2, D2, …). Tactile + label feedback for every button:
-  //   • Pressed state: a button visibly depresses (see .face-btn.pressed) while
-  //     the pointer is down and snaps back on release.
-  //   • A quarter-turn click is 90° clockwise, or 90° counter-clockwise when the
-  //     Shift key is held (U').  A half-turn button is always a 180° turn.
-  //   • There is NO double-click detection: one click performs exactly one move
-  //     immediately, so there is no deferred timer or timing race.
-  //   • Ambient prime label: while the Shift key is HELD, every face
-  //     button shows its prime label (U', D', …) even with no mouse involved,
-  //     and — crucially — the label STAYS primed after a click for as long as
-  //     the key remains down. Releasing the key snaps every label back to the
-  //     plain letter.  (Cmd/Meta is intentionally ignored — on macOS it is the
-  //     right-click modifier, and mixing two modifiers would leave the label
-  //     undefined if only one of them is released.)
-  const faceBtnWrap = document.getElementById('face-buttons');
+  // Three columns; each button is ONE fixed move, so a tap always does exactly
+  // one thing with no modifier.  This matters on touch devices (e.g. iPad), which
+  // have no Shift key:
+  //   • Left   — 90° clockwise quarter-turns:  U D L R F B
+  //   • Middle — 90° counter-clockwise quarter-turns:  U' D' L' R' F' B'
+  //   • Right  — 180° half-turns:  U2 D2 L2 R2 F2 B2
+  //
+  // Tactile feedback: a button visibly depresses (.face-btn.pressed) while the
+  // pointer is down and snaps back on release.  Labels are fixed, so there is
+  // nothing to repaint — no Shift-driven prime preview, no ambient state.
+  //
+  // There is NO double-click detection: one release performs exactly one move
+  // immediately, so there is no deferred timer or timing race.
+  //
+  // Turns fire on a clean Pointer *release* over the button, not the browser's
+  // synthesized `click` event: Safari can drop or defer that event after a tap,
+  // which left the button looking responsive while the face never turned.  A
+  // pointerdown presses the button; pointercancel/pointerleave un-depress
+  // WITHOUT turning, so only a release over the button counts as a turn.
+  // powerFor: 0 = 90° clockwise, 1 = 180° half, 2 = 90° counter-clockwise.
+  const buildColumn = (wrapId, labelFor, powerFor, titleFor, cls) => {
+    const wrap = document.getElementById(wrapId);
+    for (const f of FACE_LETTERS) {
+      const b = document.createElement('button');
+      b.textContent = labelFor(f);
+      b.dataset.face = f;
+      b.title = titleFor(f);
+      b.className = 'face-btn w-12 rounded-lg py-2 text-sm font-semibold text-center ' + cls;
+      // Keyboard shortcuts cover U/D/L/R/F/B on their own, so keep the buttons
+      // out of the tab order (mouse/touch controls only).
+      b.tabIndex = -1;
+      b.addEventListener('pointerdown', () => b.classList.add('pressed'));
+      b.addEventListener('pointerup', () => {
+        b.classList.remove('pressed');
+        userTurn(f, powerFor(f));
+      });
+      b.addEventListener('pointercancel', () => b.classList.remove('pressed'));
+      b.addEventListener('pointerleave', () => b.classList.remove('pressed'));
+      wrap.appendChild(b);
+    }
+  };
 
-  // Global "prime" modifier state, driven ONLY by the Shift key, so the labels
-  // can never be left in an ambiguous state by Cmd/Meta. On macOS Cmd is the
-  // right-click modifier and is intentionally ignored for the UI, and a two-key
-  // scheme would leave the label undefined if only one key were released.
-  let shiftHeld = false;
-  const ambientLabel = (f) => (shiftHeld ? f + "'" : f);
-  // Repaint every face button's label to its ambient (resting) value, unless a
-  // button is mid-press — its transient preview owns the label until it releases.
-  function paintAmbient() {
-    for (const b of faceBtnWrap.querySelectorAll('button')) {
-      if (b.classList.contains('pressed')) continue;
-      b.textContent = ambientLabel(b.dataset.face);
+  // Left column — clockwise quarter-turns.
+  buildColumn('face-buttons',
+    f => f, () => 0,
+    f => f + ' layer — 90° clockwise',
+    'bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10');
+
+  // Middle column — counter-clockwise quarter-turns (the prime).
+  buildColumn('prime-buttons',
+    f => f + "'", () => 2,
+    f => f + " layer — 90° counter-clockwise",
+    'bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10');
+
+  // Right column — 180° half-turns.  Labels are fixed (a 180° has no direction);
+  // a single release is one 180° turn.
+  buildColumn('half-buttons',
+    f => f + '2', () => 1,
+    f => f + ' layer — 180°',
+    'bg-sky-800/70 hover:bg-sky-700 ring-1 ring-sky-400/20 font-mono');
+
+  // --- Layer-button drawer ---
+  // The panel hides off the left edge behind a vertical tab that is its rightmost
+  // child.  Clicking/tapping the tab slides the panel out; clicking it again
+  // (or pressing 't') slides it back.  The horizontal slide lives on the inner
+  // .drawer-unit so it never fights the outer element's vertical centering.
+  const faceDrawer = document.getElementById('face-drawer');
+  const faceTab = document.getElementById('face-drawer-tab');
+  let drawerOpen = false;
+  // Measure and snap the drawer to the freshly computed shift.  When animate is
+  // false the transition is suppressed so an auto re-measurement can't slide the
+  // panel on screen.  A transform never changes the observed box, so this can't
+  // loop the ResizeObserver back into itself.
+  function applyShift(animate) {
+    const shift = -(faceDrawer.offsetWidth - faceTab.offsetWidth);
+    faceDrawer.style.transition = animate ? '' : 'none';
+    faceDrawer.style.setProperty('--drawer-shift', shift + 'px');
+    faceDrawer.classList.toggle('drawer-closed', !drawerOpen);
+    faceTab.setAttribute('aria-expanded', String(drawerOpen));
+  }
+  function toggleDrawer() { drawerOpen = !drawerOpen; applyShift(true); }
+  // A click is enough to toggle: a tap on a real <button> in Safari fires a
+  // click, so this works on iPad with no keyboard.  (Only the face buttons
+  // themselves need pointerup.)
+  faceTab.onclick = toggleDrawer;
+
+  // The CDN Tailwind CSS is injected at runtime by a <script> (not a <style>),
+  // so the w-12 / gap / p-3 columns may not have their final width when the
+  // module first runs; an early measurement would leave the panel peeking.  Keep
+  // the CSS default (fully hidden) until layout is ready, then snap it closed and
+  // re-measure on any later size change.  Because auto re-measurements don't
+  // animate, the panel never visibly slides on first load.
+  function armDrawer() {
+    applyShift(false);
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => applyShift(false)).observe(faceDrawer);
+    } else {
+      addEventListener('resize', () => applyShift(false));
     }
   }
-  addEventListener('keydown', e => {
-    if (e.repeat || e.key !== 'Shift') return;
-    shiftHeld = true; paintAmbient();
-  });
-  addEventListener('keyup', e => {
-    if (e.key !== 'Shift') return;
-    shiftHeld = false; paintAmbient();
-  });
-
-  // --- Quarter-turn buttons (left column): U, D, L, R, F, B. ---
-  // A click is one 90° turn immediately: clockwise, or counter-clockwise when
-  // Shift is held. Half-turns live in the right column — there is NO double-click
-  // detection and NO deferred timer, so a click can never be lost to a race.
-  const pressFace = (b, f) => {
-    b.classList.add('pressed');
-    b.textContent = ambientLabel(f);
-  };
-  // On release, snap back to the AMBIENT label, so a prime preview persists
-  // while Shift is still held rather than reverting to the plain letter.
-  const releaseFace = (b, f) => {
-    b.classList.remove('pressed');
-    b.textContent = ambientLabel(f);
-  };
-  for (const f of FACE_LETTERS) {
-    const b = document.createElement('button');
-    b.textContent = ambientLabel(f);
-    b.dataset.face = f;
-    b.title = f + ' layer — 90° clockwise (Shift: counter)';
-    b.className = 'face-btn w-12 rounded-lg py-2 text-sm font-semibold text-center bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10';
-    // Mouse/touch controls only: the faces also have keyboard shortcuts
-    // (U/D/L/R/F/B, Shift = counter), so keep them out of the tab order and do
-    // not rely on the synthesized `click` event for keyboard activation.
-    b.tabIndex = -1;
-    // All feedback AND the move are driven by Pointer Events, which Safari
-    // delivers reliably.  We deliberately do NOT use the synthesized `click`
-    // event: Safari can suppress or defer it after a pointer interaction (a tiny
-    // movement read as a gesture, or a pointercancel), which left the button
-    // looking responsive while the face never turned and the log never updated.
-    // A Pointer release over the button is the single, reliable trigger.
-    b.addEventListener('pointerdown', () => pressFace(b, f));
-    // Release over the button: snap back to the ambient label AND perform the
-    // turn — counter-clockwise when Shift is held at the moment of release.
-    b.addEventListener('pointerup', e => {
-      releaseFace(b, f);
-      userTurn(f, e.shiftKey ? 2 : 0);
-    });
-    // A cancel, or the pointer leaving the button while held, un-depresses
-    // WITHOUT turning — only a clean release over the button counts as a turn.
-    b.addEventListener('pointercancel', () => releaseFace(b, f));
-    b.addEventListener('pointerleave', () => releaseFace(b, f));
-    faceBtnWrap.appendChild(b);
-  }
-
-  // --- Half-turn buttons (right column): U2, D2, L2, R2, F2, B2. ---
-  // Each release is a single 180° turn. Labels are fixed (a 180° has no
-  // direction), so they do NOT follow the Shift "prime" preview that the
-  // quarter buttons do.
-  const halfBtnWrap = document.getElementById('half-buttons');
-  const pressHalf = (b, f) => {
-    b.classList.add('pressed');
-    b.textContent = f + '2';
-  };
-  const releaseHalf = (b, f) => {
-    b.classList.remove('pressed');
-    b.textContent = f + '2';
-  };
-  for (const f of FACE_LETTERS) {
-    const b = document.createElement('button');
-    b.textContent = f + '2';
-    b.dataset.face = f;
-    b.title = f + ' layer — 180°';
-    b.className = 'face-btn w-12 rounded-lg py-2 text-sm font-semibold font-mono text-center bg-sky-800/70 hover:bg-sky-700 ring-1 ring-sky-400/20';
-    b.tabIndex = -1;
-    // 180° half-turn on a clean Pointer release.  Pointer Events are reliable
-    // in Safari; the synthesized `click` is not.
-    b.addEventListener('pointerdown', () => pressHalf(b, f));
-    b.addEventListener('pointerup', () => {
-      releaseHalf(b, f);
-      userTurn(f, 1);
-    });
-    b.addEventListener('pointercancel', () => releaseHalf(b, f));
-    b.addEventListener('pointerleave', () => releaseHalf(b, f));
-    halfBtnWrap.appendChild(b);
-  }
+  if (document.readyState === 'complete') requestAnimationFrame(armDrawer);
+  else addEventListener('load', armDrawer);
+  // A couple of extra rAFs catch the moment the CDN CSS finishes injecting styles
+  // even on very fast, already-cached loads.
+  requestAnimationFrame(() => requestAnimationFrame(() => applyShift(false)));
 
   // --- Primary buttons ---
   document.getElementById('btn-scramble').onclick = scramble;
@@ -938,8 +949,6 @@
   });
 
   // --- Keyboard shortcuts ---
-  const KEY = { ' ': 'solve', s: 'scramble', 0: 'reset',
-                u: 'U', d: 'D', l: 'L', r: 'R', f: 'F', b: 'B' };
   addEventListener('keydown', e => {
     if (e.target.matches('input, textarea')) return;
     if (e.key === 'ArrowRight') { stepForward(); e.preventDefault(); return; }
@@ -952,6 +961,7 @@
     if (e.key === ' ' || e.code === 'Space') { solve(); e.preventDefault(); return; }
     if (e.key === '0') { resetCube(); return; }
     if (e.key === 's') scramble();
+    if (e.key === 't' || e.key === 'T') { toggleDrawer(); return; }
   });
 
   // Step through a sequence one move at a time. auto=false so each step plays a
@@ -1056,14 +1066,6 @@
     renderer.render(scene, camera);
   }
 
-  /*
-   * Read the rendered scene straight out of the WebGL back buffer via
-   * gl.readPixels and return { width, height, data(base64) } where data is the
-   * raw RGBA pixels, top-down (rows flipped from GL's y-up). This bypasses the
-   * unreliable 2D-canvas sync in headless Chromium. The screenshot harness
-   * decodes the bytes and encodes a PNG with ImageMagick (see
-   * tools/render-screenshot.js).
-   */
   // Read the rendered scene straight out of the WebGL back buffer via
   // gl.readPixels and return { width, height, data(base64) }. `data` is raw
   // RGBA pixels, top-down (GL's y-up is flipped). Cube geometry has alpha=255;
@@ -1071,7 +1073,8 @@
   // (set to 0 by renderFrame so the cube composites cleanly). In headless
   // Chromium the 2D-canvas representation that page.screenshot / toDataURL
   // read doesn't sync with the GL back buffer, so reading pixels directly is
-  // the reliable way to capture the cube.
+  // the reliable way to capture the cube. The screenshot harness decodes the
+  // bytes and encodes a PNG with ImageMagick (see tools/render-screenshot.js).
   function readFrame() {
 
     renderNow();
@@ -1106,10 +1109,6 @@
 
   }
 
-  // Render one frame with a transparent scene background and return its pixels.
-  // The background is restored immediately, so this is safe to call from the
-  // hook; the returned PNG contains only the cube (and shadows) over
-  // transparency, ready to composite over the DOM UI.
   // Render one frame with a TRANSPARENT scene background and return its pixels.
   // A plain transparent Color background is not enough: three.js clears an
   // opaque Color at clearAlpha=1, so we (a) drop the background to null and
@@ -1149,7 +1148,6 @@
     get busy() { return state.busy; },
     get status() { return state.status; },
     get cubies() { return cubies; },
-    isAnimating: () => state.busy,
     // Drive one move (no animation) — used for instant screenshots.
     applyInstant: (face, power) => {
       applyMove(cubies, face, power);

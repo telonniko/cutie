@@ -1,13 +1,16 @@
 /**
  * tools/press-test.js — verifies the face-button behavior:
+ *   - three columns: clockwise quarter (U…B), counter-clockwise quarter
+ *     (U'…B'), and 180° half-turns (U2…B2)
+ *   - each button is one fixed move; labels are fixed (no Shift-driven prime
+ *     preview, no ambient repaint)
  *   - depressed (.pressed) look on pointer down, restored on up
- *   - shift click previews the prime  (U')
- *   - label always snaps back to the plain letter on release
- *   - half-turn buttons (U2, D2, …) have fixed labels and don't follow Shift
- *   - Cmd/Meta is ignored (only Shift primes labels)
- *   - ACTION: a single click on a quarter button turns 90° immediately
- *             (no deferral, no double-click detection);
+ *   - ACTION: a single click on a quarter button turns 90° clockwise
+ *             immediately (no deferral, no double-click detection);
+ *             a click on a prime button turns 90° counter-clockwise;
  *             a click on a half-turn button turns 180°.
+ *   - the panel hides behind a tab; clicking the tab (or pressing 't') slides it
+ *     open/closed (works on iPad with no keyboard).
  */
 const path = require('path');
 const fs = require('fs');
@@ -24,19 +27,11 @@ function findExecutable() {
   return undefined;
 }
 
-async function quarterState(page, letter) {
-  return page.evaluate((f) => {
-    const b = document.querySelector('#face-buttons button[data-face="' + f + '"]');
+const stateFor = (wrap, f) => (page) =>
+  page.evaluate(({ wrap, f }) => {
+    const b = document.querySelector('#' + wrap + ' button[data-face="' + f + '"]');
     return { text: b.textContent, pressed: b.classList.contains('pressed') };
-  }, letter);
-}
-
-async function halfState(page, letter) {
-  return page.evaluate((f) => {
-    const b = document.querySelector('#half-buttons button[data-face="' + f + '"]');
-    return { text: b.textContent, pressed: b.classList.contains('pressed') };
-  }, letter);
-}
+  }, { wrap, f });
 
 (async () => {
   const launchOpts = {
@@ -50,100 +45,60 @@ async function halfState(page, letter) {
   await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'load' });
   await page.waitForFunction(() => window.__RUBIKS__ && window.__RUBIKS__.ready === true, { timeout: 120000 });
 
-  const centerQuarter = async (letter) => {
-    const box = await page.locator('#face-buttons button[data-face="' + letter + '"]').boundingBox();
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  };
-
-  const centerHalf = async (letter) => {
-    const box = await page.locator('#half-buttons button[data-face="' + letter + '"]').boundingBox();
+  const center = async (wrap, letter) => {
+    const box = await page.locator('#' + wrap + ' button[data-face="' + letter + '"]').boundingBox();
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   };
 
   const results = [];
   const check = (name, cond, info) => { results.push((cond ? 'PASS' : 'FAIL') + '  ' + name + '  ' + info); };
-  const allQuarterLabels = () => page.evaluate(() =>
-    Array.from(document.querySelectorAll('#face-buttons button')).map(b => b.textContent).join(' '));
-  const allHalfLabels = () => page.evaluate(() =>
-    Array.from(document.querySelectorAll('#half-buttons button')).map(b => b.textContent).join(' '));
+  const allLabels = (wrap) => page.evaluate(
+    (w) => Array.from(document.querySelectorAll('#' + w + ' button')).map(b => b.textContent).join(' '), wrap);
 
   // ---- 1) Plain press: U depressed, label stays 'U', restores on release. ---
-  let p = await centerQuarter('U');
+  let p = await center('face-buttons', 'U');
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
-  let s = await quarterState(page, 'U');
+  let s = stateFor('face-buttons', 'U')(page);
   check('plain down -> pressed + label U', s.pressed === true && s.text === 'U', JSON.stringify(s));
   await page.screenshot({ path: 'docs/screenshots/face-pressed.png' });
   await page.mouse.up();
-  s = await quarterState(page, 'U');
+  s = stateFor('face-buttons', 'U')(page);
   check('plain up  -> restored flat + label U', s.pressed === false && s.text === 'U', JSON.stringify(s));
 
-  // ---- 2) Shift-click: label previews F'. ---------------------------------
-  p = await centerQuarter('F');
-  await page.mouse.move(p.x, p.y);
-  await page.keyboard.down('Shift');
-  await page.mouse.down();
-  s = await quarterState(page, 'F');
-  check('shift down -> pressed + label F\'', s.pressed === true && s.text === "F'", JSON.stringify(s));
-  await page.mouse.up();
-  await page.keyboard.up('Shift');
-  s = await quarterState(page, 'F');
-  check('shift up   -> restored flat + label F', s.pressed === false && s.text === 'F', JSON.stringify(s));
+  // ---- 2) Fixed labels: quarter, prime, and half columns are all static. -----
+  //    No Shift-driven preview: the prime is its own column (U'…B'), so nothing
+  //    repaints on modifier keys.
+  check('quarter labels fixed', await allLabels('face-buttons') === 'U D L R F B',
+    await allLabels('face-buttons'));
+  check('prime labels fixed', await allLabels('prime-buttons') === "U' D' L' R' F' B'",
+    await allLabels('prime-buttons'));
+  check('half labels fixed', await allLabels('half-buttons') === 'U2 D2 L2 R2 F2 B2',
+    await allLabels('half-buttons'));
 
-  // ---- 3) Half-turn buttons: fixed label, pressed visual, no Shift prime. --
-  p = await centerHalf('R');
+  // ---- 3) Prime-column press: fixed 'F' label, pressed visual. --------------
+  p = await center('prime-buttons', 'F');
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
-  s = await halfState(page, 'R');
+  s = stateFor('prime-buttons', 'F')(page);
+  check('prime down -> pressed + label F\'', s.pressed === true && s.text === "F'", JSON.stringify(s));
+  await page.mouse.up();
+  s = stateFor('prime-buttons', 'F')(page);
+  check('prime up  -> restored flat + label F\'', s.pressed === false && s.text === "F'", JSON.stringify(s));
+
+  // ---- 4) Half-turn button: fixed label, pressed visual. -------------------
+  p = await center('half-buttons', 'R');
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  s = stateFor('half-buttons', 'R')(page);
   check('half down -> pressed + label R2', s.pressed === true && s.text === 'R2', JSON.stringify(s));
   await page.mouse.up();
-  s = await halfState(page, 'R');
+  s = stateFor('half-buttons', 'R')(page);
   check('half up   -> restored flat + label R2', s.pressed === false && s.text === 'R2', JSON.stringify(s));
-
-  // Half-turn labels are always fixed (U2 D2 L2 R2 F2 B2), even with Shift held.
-  await page.keyboard.down('Shift');
-  await page.waitForTimeout(30);
-  let halfLabels = await allHalfLabels();
-  check('Shift down -> half labels unchanged', halfLabels === 'U2 D2 L2 R2 F2 B2', JSON.stringify(halfLabels));
-  await page.keyboard.up('Shift');
-
-  // ---- 4) Ambient prime: holding Shift primes ALL quarter labels with no -----
-  //    click; releasing restores them.  A click while Shift is held keeps the --
-  //    label primed after the pointer releases.
-  await page.keyboard.down('Shift');
-  await page.waitForTimeout(50);
-  let all = await allQuarterLabels();
-  check('Shift down -> all quarter labels primed', all === "U' D' L' R' F' B'", JSON.stringify(all));
-  p = await centerQuarter('D');
-  await page.mouse.move(p.x, p.y);
-  await page.mouse.down();
-  s = await quarterState(page, 'D');
-  check('shift+down -> D\' primed', s.pressed === true && s.text === "D'", JSON.stringify(s));
-  await page.mouse.up();                       // Shift STILL held
-  s = await quarterState(page, 'D');
-  check('shift held after click -> stays D\'', s.pressed === false && s.text === "D'", JSON.stringify(s));
-  await page.keyboard.up('Shift');
-  await page.waitForTimeout(50);
-  all = await allQuarterLabels();
-  check('Shift up   -> all quarter labels plain', all === 'U D L R F B', JSON.stringify(all));
-
-  // ---- 5) Cmd/Meta must be IGNORED by the UI — only Shift primes labels. ----
-  //    Dispatch synthetic Meta key events (target = body, which has .matches,
-  //    unlike a window-targeted event) and assert the labels never change.
-  await page.evaluate(() => {
-    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Meta', bubbles: true }));
-  });
-  await page.waitForTimeout(30);
-  let allMeta = await allQuarterLabels();
-  check('Meta keydown -> labels stay plain', allMeta === 'U D L R F B', JSON.stringify(allMeta));
-  await page.evaluate(() => {
-    document.body.dispatchEvent(new KeyboardEvent('keyup', { key: 'Meta', bubbles: true }));
-  });
-  allMeta = await allQuarterLabels();
-  check('Meta keyup   -> labels stay plain', allMeta === 'U D L R F B', JSON.stringify(allMeta));
 
   // --- Action-level checks: the cube must actually turn ---------------------
   const quarterU = page.locator('#face-buttons button[data-face="U"]');
+  const primeU = page.locator('#prime-buttons button[data-face="U"]');
   const halfU = page.locator('#half-buttons button[data-face="U"]');
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
   // Reset to a known solved state.
@@ -153,7 +108,7 @@ async function halfState(page, letter) {
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
   }
 
-  // ---- 6) Single click on a quarter button performs 90° immediately. -------
+  // ---- 5) Single click on a quarter button performs 90° clockwise. ---------
   //    There is NO deferral or double-click detection: the pointerup fires
   //    userTurn() immediately, so `busy` is true right after the release.
   await resetIdle();
@@ -173,7 +128,7 @@ async function halfState(page, letter) {
   const quarterSolved = await isSolved();
   check('four single U clicks return to solved (90° each)', quarterSolved === true, 'solved=' + quarterSolved);
 
-  // ---- 7) Single click on a half-turn button performs 180°. ----------------
+  // ---- 6) Single click on a half-turn button performs 180°. ----------------
   //    Two half-turn clicks of U return the cube to solved (2 × 180° = 360°).
   await resetIdle();
   await halfU.click();
@@ -184,17 +139,34 @@ async function halfState(page, letter) {
   const h2 = await isSolved();
   check('half-turn U x2 returns to solved (180° each)', h1 === false && h2 === true, 'after1=' + h1 + ' after2=' + h2);
 
-  // ---- 8) Shift+click on quarter button performs 90° counter-clockwise. ----
-  //    Four Shift+clicks return to solved (4 × 90° counter = 360°).
+  // ---- 7) Single click on a prime button performs 90° counter-clockwise. ----
+  //    Four prime clicks return to solved (4 × 90° counter = 360°).
   await resetIdle();
-  await page.keyboard.down('Shift');
   for (let i = 0; i < 4; i++) {
-    await quarterU.click();
+    await primeU.click();
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
   }
-  await page.keyboard.up('Shift');
-  const shiftSolved = await isSolved();
-  check('four Shift+U clicks return to solved (90° counter each)', shiftSolved === true, 'solved=' + shiftSolved);
+  const primeSolved = await isSolved();
+  check('four prime U clicks return to solved (90° counter each)', primeSolved === true, 'solved=' + primeSolved);
+
+  // ---- 8) The layer-button drawer toggles via the tab and the 't' key. ------
+  //    Starts hidden; tapping the tab (a real click) slides it out; tapping
+  //    again slides it back. 't' does the same from the keyboard.
+  const drawerOpen = () => page.evaluate(
+    () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
+  check('drawer starts closed', await drawerOpen() === 'false', await drawerOpen());
+  await page.click('#face-drawer-tab');
+  await page.waitForTimeout(350);                 // let the slide settle
+  check('tab click opens drawer', await drawerOpen() === 'true', await drawerOpen());
+  await page.click('#face-drawer-tab');
+  await page.waitForTimeout(350);
+  check('tab click closes drawer', await drawerOpen() === 'false', await drawerOpen());
+  await page.keyboard.press('t');
+  await page.waitForTimeout(350);
+  check('t key opens drawer', await drawerOpen() === 'true', await drawerOpen());
+  await page.keyboard.press('t');
+  await page.waitForTimeout(350);
+  check('t key closes drawer', await drawerOpen() === 'false', await drawerOpen());
 
   await browser.close();
   console.log(results.join('\n'));
