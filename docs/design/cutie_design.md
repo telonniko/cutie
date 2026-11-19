@@ -112,7 +112,7 @@ on desktop.
 ### Primary actions (right panel, bottom)
 | Button | Action |
 |--------|--------|
-| **Scramble** | Random 20-move scramble, no two consecutive same-face, animated. Clears the log first. |
+| **Scramble** | Random 18–35 move scramble, no two consecutive same-face, animated. Clears the log first. |
 | **Solve** | Clear the log, then compute the solution via cubejs from the cube's current state and animate it step-by-step. |
 | **Step →** | Advance the current step one move (replay the next move in the log) and stop. |
 | **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. |
