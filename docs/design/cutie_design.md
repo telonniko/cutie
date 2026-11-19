@@ -105,8 +105,9 @@ touch devices (e.g. iPad) that have no Shift key:
   can suppress/defer `click` after a tap. `pointercancel`/`pointerleave`
   un-depress without turning.
 
-The face **keys** (`U D L R F B`, `Shift` + a face key for the prime) still work
-as keyboard shortcuts on desktop.
+The face **keys** (`U D L R F B`, `Shift` + a face key for the prime, `Alt` /
+`Option` + a face key for the 180° half turn) still work as keyboard shortcuts
+on desktop.
 
 ### Primary actions (right panel, bottom)
 | Button | Action |
@@ -183,11 +184,13 @@ as keyboard shortcuts on desktop.
 | `←` | Step backward |
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U` `D` `L` `R` `F` `B` | Turn that face counter-clockwise |
+| `Alt` + `U` `D` `L` `R` `F` `B` | Turn that face 180° (half turn) |
 | `T` | Toggle the layer-button drawer open / closed |
 
 Face-turn keys are matched via `e.key.toUpperCase()`, so any of `U D L R F B`
-turns that face (`Shift` for the counter-clockwise prime). Input fields are
-ignored, and repeat events are ignored for face turns.
+turns that face (`Shift` for the counter-clockwise prime, `Alt`/`Option` for the
+180° half turn — directionless, so it wins over `Shift` when both are held). Input
+fields are ignored, and repeat events are ignored for face turns.
 
 ---
 
@@ -208,16 +211,23 @@ a 300-move random sequence matches, and solve round-trips through cubejs.
 Run: `node tools/verify.js`.
 
 ### `tools/press-test.js`
-Playwright tests for face-button behavior:
+Keyboard-shortcut tests:
+- `T` toggles the drawer open/closed.
+- `Alt`/`Option` + a face key performs a 180° half turn (two `Alt+U`
+  return to solved; `Shift` remains the prime modifier).
+- Run: `node tools/press-test.js`.
+
+### `tools/click-test.js`
+Playwright tests for face-button mouse/click behavior:
 - Pressed visual state on quarter, prime, and half-turn buttons.
 - Labels are fixed (no Shift-driven prime preview, no ambient repaint).
 - Action: four single clockwise quarter clicks return to solved (4 × 90° = 360°).
 - Action: two half-turn clicks return to solved (2 × 180° = 360°).
 - Action: four single prime (counter-clockwise) clicks return to solved
   (4 × 90° counter = 360°).
-- The drawer starts closed; clicking the tab and pressing `T` each toggle it
-  open / closed (works on iPad with no keyboard).
-- Run: `node tools/press-test.js`.
+- The drawer starts closed; clicking the tab toggles it open/closed
+  (works on iPad with no keyboard).
+- Run: `node tools/click-test.js`.
 
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
@@ -258,7 +268,8 @@ Tailwind, vanilla JS).
   and half-turns are each their own column of buttons.
 - **No Shift-driven UI**: counter-clockwise quarter turns are their own column
   of buttons (`U'…B'`), so no modifier is needed for the on-screen controls. The
-  face *keys* keep `Shift` as the prime modifier for desktop keyboards.
+  face *keys* keep `Shift` as the prime modifier and `Alt`/`Option` as the
+  half-turn modifier for desktop keyboards.
 - **Drawer, not a static panel**: the layer buttons hide behind a vertical tab
   (panel's right edge). The horizontal slide lives on an inner `.drawer-unit`
   transform so it never fights the outer element's vertical centering. Toggle is

@@ -110,7 +110,8 @@ there is no modifier to watch and nothing to repaint.
 The turns fire on **pointer release**, not the browser's synthesized `click`
 event: Safari can drop that event after a tap, so triggering on `pointerup`
 keeps the buttons responsive across browsers. On desktop, the face keys
-(`U D L R F B`, `Shift` + a face key for the prime) still work as shortcuts.
+(`U D L R F B`, `Shift` + a face key for the prime, `Alt` + a face key for the
+half turn) still work as shortcuts.
 
 ---
 
@@ -125,6 +126,7 @@ keeps the buttons responsive across browsers. On desktop, the face keys
 | `←` | Step backward |
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U D L R F B` | Turn that face counter-clockwise |
+| `Alt` + `U D L R F B` | Turn that face 180° (half turn) |
 | `T` | Toggle the layer-button drawer open / closed |
 
 ---

@@ -1,16 +1,8 @@
 /**
- * tools/press-test.js — verifies the face-button behavior:
- *   - three columns: clockwise quarter (U…B), counter-clockwise quarter
- *     (U'…B'), and 180° half-turns (U2…B2)
- *   - each button is one fixed move; labels are fixed (no Shift-driven prime
- *     preview, no ambient repaint)
- *   - depressed (.pressed) look on pointer down, restored on up
- *   - ACTION: a single click on a quarter button turns 90° clockwise
- *             immediately (no deferral, no double-click detection);
- *             a click on a prime button turns 90° counter-clockwise;
- *             a click on a half-turn button turns 180°.
- *   - the panel hides behind a tab; clicking the tab (or pressing 't') slides it
- *     open/closed (works on iPad with no keyboard).
+ * tools/press-test.js — keyboard-shortcut tests:
+ *   - 't' toggles the layer-button drawer open/closed
+ *   - Alt/Option + face key performs a 180° half turn
+ *     (Shift is the prime modifier; Alt is the half-turn modifier)
  */
 const path = require('path');
 const fs = require('fs');
@@ -27,12 +19,6 @@ function findExecutable() {
   return undefined;
 }
 
-const stateFor = (wrap, f) => (page) =>
-  page.evaluate(({ wrap, f }) => {
-    const b = document.querySelector('#' + wrap + ' button[data-face="' + f + '"]');
-    return { text: b.textContent, pressed: b.classList.contains('pressed') };
-  }, { wrap, f });
-
 (async () => {
   const launchOpts = {
     headless: true,
@@ -45,128 +31,39 @@ const stateFor = (wrap, f) => (page) =>
   await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'load' });
   await page.waitForFunction(() => window.__RUBIKS__ && window.__RUBIKS__.ready === true, { timeout: 120000 });
 
-  const center = async (wrap, letter) => {
-    const box = await page.locator('#' + wrap + ' button[data-face="' + letter + '"]').boundingBox();
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  };
-
   const results = [];
   const check = (name, cond, info) => { results.push((cond ? 'PASS' : 'FAIL') + '  ' + name + '  ' + info); };
-  const allLabels = (wrap) => page.evaluate(
-    (w) => Array.from(document.querySelectorAll('#' + w + ' button')).map(b => b.textContent).join(' '), wrap);
-
-  // ---- 1) Plain press: U depressed, label stays 'U', restores on release. ---
-  let p = await center('face-buttons', 'U');
-  await page.mouse.move(p.x, p.y);
-  await page.mouse.down();
-  let s = stateFor('face-buttons', 'U')(page);
-  check('plain down -> pressed + label U', s.pressed === true && s.text === 'U', JSON.stringify(s));
-  await page.screenshot({ path: 'docs/screenshots/face-pressed.png' });
-  await page.mouse.up();
-  s = stateFor('face-buttons', 'U')(page);
-  check('plain up  -> restored flat + label U', s.pressed === false && s.text === 'U', JSON.stringify(s));
-
-  // ---- 2) Fixed labels: quarter, prime, and half columns are all static. -----
-  //    No Shift-driven preview: the prime is its own column (U'…B'), so nothing
-  //    repaints on modifier keys.
-  check('quarter labels fixed', await allLabels('face-buttons') === 'U D L R F B',
-    await allLabels('face-buttons'));
-  check('prime labels fixed', await allLabels('prime-buttons') === "U' D' L' R' F' B'",
-    await allLabels('prime-buttons'));
-  check('half labels fixed', await allLabels('half-buttons') === 'U2 D2 L2 R2 F2 B2',
-    await allLabels('half-buttons'));
-
-  // ---- 3) Prime-column press: fixed 'F' label, pressed visual. --------------
-  p = await center('prime-buttons', 'F');
-  await page.mouse.move(p.x, p.y);
-  await page.mouse.down();
-  s = stateFor('prime-buttons', 'F')(page);
-  check('prime down -> pressed + label F\'', s.pressed === true && s.text === "F'", JSON.stringify(s));
-  await page.mouse.up();
-  s = stateFor('prime-buttons', 'F')(page);
-  check('prime up  -> restored flat + label F\'', s.pressed === false && s.text === "F'", JSON.stringify(s));
-
-  // ---- 4) Half-turn button: fixed label, pressed visual. -------------------
-  p = await center('half-buttons', 'R');
-  await page.mouse.move(p.x, p.y);
-  await page.mouse.down();
-  s = stateFor('half-buttons', 'R')(page);
-  check('half down -> pressed + label R2', s.pressed === true && s.text === 'R2', JSON.stringify(s));
-  await page.mouse.up();
-  s = stateFor('half-buttons', 'R')(page);
-  check('half up   -> restored flat + label R2', s.pressed === false && s.text === 'R2', JSON.stringify(s));
-
-  // --- Action-level checks: the cube must actually turn ---------------------
-  const quarterU = page.locator('#face-buttons button[data-face="U"]');
-  const primeU = page.locator('#prime-buttons button[data-face="U"]');
-  const halfU = page.locator('#half-buttons button[data-face="U"]');
+  // The drawer's open/closed state, read from the tab's aria-expanded attribute.
+  const drawerOpen = () => page.evaluate(
+    () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
-  // Reset to a known solved state.
   async function resetIdle() {
     await page.click('#btn-reset');
     await page.waitForTimeout(400);
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
   }
 
-  // ---- 5) Single click on a quarter button performs 90° clockwise. ---------
-  //    There is NO deferral or double-click detection: the pointerup fires
-  //    userTurn() immediately, so `busy` is true right after the release.
-  await resetIdle();
-  const preSolved = await isSolved();
-  check('precondition: cube solved (quarter test)', preSolved === true, 'solved=' + preSolved);
-  await quarterU.click();
-  // Wait for the turn to complete, then verify the cube is NOT solved (90°).
-  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
-  const q1 = await isSolved();
-  check('single quarter click does NOT solve (90° turn)', q1 === false, 'solved=' + q1);
-
-  // Four single quarter clicks of U return the cube to solved (4 × 90° = 360°).
-  for (let i = 0; i < 3; i++) {
-    await quarterU.click();
-    await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
-  }
-  const quarterSolved = await isSolved();
-  check('four single U clicks return to solved (90° each)', quarterSolved === true, 'solved=' + quarterSolved);
-
-  // ---- 6) Single click on a half-turn button performs 180°. ----------------
-  //    Two half-turn clicks of U return the cube to solved (2 × 180° = 360°).
-  await resetIdle();
-  await halfU.click();
-  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
-  const h1 = await isSolved();
-  await halfU.click();
-  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
-  const h2 = await isSolved();
-  check('half-turn U x2 returns to solved (180° each)', h1 === false && h2 === true, 'after1=' + h1 + ' after2=' + h2);
-
-  // ---- 7) Single click on a prime button performs 90° counter-clockwise. ----
-  //    Four prime clicks return to solved (4 × 90° counter = 360°).
-  await resetIdle();
-  for (let i = 0; i < 4; i++) {
-    await primeU.click();
-    await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
-  }
-  const primeSolved = await isSolved();
-  check('four prime U clicks return to solved (90° counter each)', primeSolved === true, 'solved=' + primeSolved);
-
-  // ---- 8) The layer-button drawer toggles via the tab and the 't' key. ------
-  //    Starts hidden; tapping the tab (a real click) slides it out; tapping
-  //    again slides it back. 't' does the same from the keyboard.
-  const drawerOpen = () => page.evaluate(
-    () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
+  // ---- 1) 't' key toggles the drawer open/closed. --------------------------
   check('drawer starts closed', await drawerOpen() === 'false', await drawerOpen());
-  await page.click('#face-drawer-tab');
-  await page.waitForTimeout(350);                 // let the slide settle
-  check('tab click opens drawer', await drawerOpen() === 'true', await drawerOpen());
-  await page.click('#face-drawer-tab');
-  await page.waitForTimeout(350);
-  check('tab click closes drawer', await drawerOpen() === 'false', await drawerOpen());
   await page.keyboard.press('t');
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(400);
   check('t key opens drawer', await drawerOpen() === 'true', await drawerOpen());
   await page.keyboard.press('t');
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(400);
   check('t key closes drawer', await drawerOpen() === 'false', await drawerOpen());
+
+  // ---- 2) Alt/Option + face key performs a 180° half turn. -----------------
+  //    Half turns have no on-screen-only keyboard button, so Alt/Option is the
+  //    modifier (Shift is the prime). Two Alt+U half-turns return to solved
+  //    (2 × 180° = 360°); one does not.
+  await resetIdle();
+  await page.keyboard.press('Alt+u');
+  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
+  const k1 = await isSolved();
+  await page.keyboard.press('Alt+u');
+  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
+  const k2 = await isSolved();
+  check('Alt+U x2 returns to solved (180° half-turn each)', k1 === false && k2 === true, 'after1=' + k1 + ' after2=' + k2);
 
   await browser.close();
   console.log(results.join('\n'));

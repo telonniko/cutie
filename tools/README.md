@@ -8,7 +8,8 @@ the documentation screenshots. Run everything from the **project root**.
 | Script | What it does | Needs | Run it with |
 | --- | --- | --- | --- |
 | `verify.js` | Unit-tests the cube-core math | Node, `cubejs` | `npm run verify` or `node tools/verify.js` |
-| `press-test.js` | Exercises the face-button UI | Node, Playwright + Chromium | `node tools/press-test.js` |
+| `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tools/press-test.js` |
+| `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tools/click-test.js` |
 | `render-screenshot.js` | Captures the project screenshots | Node, Playwright + Chromium, ImageMagick | `npm run screenshot` or `node tools/render-screenshot.js` |
 
 ## Prerequisites
@@ -28,7 +29,7 @@ these, since they are dev-only.
 
 - `verify.js` needs **`cubejs`** (a devDependency, used only by the tooling —
   the app itself loads cubejs from a CDN).
-- `press-test.js` and `render-screenshot.js` need **Playwright** and a headless
+- `press-test.js`, `click-test.js`, and `render-screenshot.js` need **Playwright** and a headless
   Chromium. On macOS, **ImageMagick** (`magick` / `convert`) is also required by
   `render-screenshot.js` to composite the cube frame over the UI.
 
@@ -48,7 +49,19 @@ The core must stay between those two sentinels for this to work.
 
 ## press-test.js
 
-Playwright-driven tests for the face-button behavior (the left-edge controls):
+Keyboard-shortcut tests for the cube UI:
+
+- `T` toggles the layer-button drawer open/closed.
+- `Alt`/`Option` + a face key performs a 180° half turn (two `Alt+U` return
+  to solved; `Shift` remains the prime modifier).
+
+Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
+test hook.
+
+## click-test.js
+
+Playwright-driven tests for the face-button mouse/click behavior (the
+left-edge controls):
 
 - Three columns of buttons: clockwise quarter turns (`U…B`),
   counter-clockwise quarter turns (`U'…B'`), and half-turns (`U2…B2`).
@@ -57,8 +70,8 @@ Playwright-driven tests for the face-button behavior (the left-edge controls):
 - Pressed (depressed) visual state on pointer down, restored on up.
 - A single click on a quarter or prime button turns 90° immediately (no
   deferral, no double-click detection); a half-turn button turns 180°.
-- The panel hides behind a tab; clicking the tab (or pressing `T`) slides it
-  open and closed (works on iPad with no keyboard).
+- The panel hides behind a tab; clicking the tab slides it open and closed
+  (works on iPad with no keyboard).
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.
