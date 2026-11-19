@@ -112,22 +112,33 @@ on desktop.
 ### Primary actions (right panel, bottom)
 | Button | Action |
 |--------|--------|
-| **Scramble** | Random 20-move scramble, no two consecutive same-face, animated. |
-| **Solve** | Compute solution via cubejs, animate step-by-step. |
-| **Step →** | Advance the queue by one move and stop. |
-| **← Step** | Undo last move (animate inverse), re-queue original for replay. |
+| **Scramble** | Random 20-move scramble, no two consecutive same-face, animated. Clears the log first. |
+| **Solve** | Clear the log, then compute the solution via cubejs from the cube's current state and animate it step-by-step. |
+| **Step →** | Advance the current step one move (replay the next move in the log) and stop. |
+| **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. |
 | **Reset** | Instantly return to solved, clear the log. |
 
 ### Solve behavior
-- Reads facelet string → `Cube.fromString(...).solve()` → animates the returned
-  sequence. If already solved, shows "Already solved". After solving: "Solved"
-  or "Solved (best effort)".
+- **Clears the Move Log first** (like Scramble), then reads the cube's current
+  facelet string → `Cube.fromString(...).solve()` → animates the returned
+  sequence from where the cube actually is. The log therefore shows just the
+  solution, and the cube ends solved regardless of where the cursor was. If
+  already solved, shows "Already solved". After solving: "Solved" or
+  "Solved (best effort)".
 
-### Step forward / backward
-- **Step forward**: pops next queued move, re-records it in the log, animates,
-  then **stops** (leaves the rest parked for subsequent steps).
-- **Step backward**: animates the inverse of the last move, removes it from the
-  log, re-queues the original (with its correct index) so Step → can replay it.
+### Step forward / backward — a cursor model
+- The Move Log tracks a **`cursor`** (the "current step"). The cube's physical
+  state is always exactly `moves[0..cursor-1]`; moves at/after the cursor are
+  *future* moves shown in the log but not yet applied.
+- **Step forward**: if the cursor is before the end of the log, replay
+  `moves[cursor]` (animate it) and advance the cursor. Stops after one move.
+- **Step backward**: if the cursor is past 0, animate the inverse of
+  `moves[cursor-1]` and retreat the cursor. The undone move **stays in the log**
+  as a future move, so Step → replays it. No separate redo stack — the cursor
+  *is* the redo/undo position.
+- A **hand turn** (face button / face key) **branches from the cursor**: it
+  discards every move past the cursor, appends the new move, and advances the
+  cursor — so the log forks at the current step instead of blindly appending.
 
 ### Animation speed slider
 - Range slider (0.3–3, step 0.1, default 1.0) with "Slow"/"Fast" labels.
@@ -147,14 +158,16 @@ on desktop.
 - **Right**: Status pill with a colored dot (emerald/sky/amber/slate for
   solved/scrambled/busy/idle), status text, and a live **Moves counter**.
 - Status values: "Solved", "Scrambled", "Turning…", "Scrambling…",
-  "Solving…", "Solving — paused", "Paused — Step ▸ to continue",
-  "Solved (best effort)", "Already solved".
+  "Solving…", "Solved (best effort)", "Already solved".
 
 ### Right control panel
 - **Move Log**: grid of move-buttons (5 per row), one per move token. Three
-  visual states — **pending** (dim), **past** (faint done), **current** (bright
-  amber highlight). Scrolls when tall; current button auto-scrolls into view.
-  Empty state shows a placeholder message.
+  visual states driven by the **cursor** — **past** (index `< cursor`, faint
+  done look), **pending** (index `>= cursor`, dim), **current** (the move
+  animating right now / last applied, bright amber highlight). Scrolls when tall;
+  the current button auto-scrolls into view. Empty state shows a placeholder
+  message. The "Moves" counter shows the number of moves actually applied
+  (the cursor).
 - **Animation speed**, and **Primary actions** sections
   (described in §4).
 
@@ -212,6 +225,14 @@ Node unit tests that extract the cube core (between the sentinels), evaluate it
 in a VM context alongside cubejs, and verify: all 18 single moves match cubejs,
 a 300-move random sequence matches, and solve round-trips through cubejs.
 Run: `node tools/verify.js`.
+
+### `tools/verify-cursor.js`
+Node regression test for the **cursor model** (the move-log step/branch logic).
+It mirrors the app's cursor behavior against the cube core + cubejs and proves:
+scramble → step back 3 → **solve** still ends solved; a hand turn branches the
+log at the cursor; Solve clears the log (log length == solution length); stepping
+back to 0 makes the cube solved again; and step-back-then-step-forward reproduces
+a move. Run: `node tools/verify-cursor.js` (`npm run verify:cursor`).
 
 ### `tools/press-test.js`
 Keyboard-shortcut tests:
@@ -284,11 +305,17 @@ Tailwind, vanilla JS).
   default until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable
   width; auto re-measurements snap (no slide), so the panel never visibly slides
   or peeks on first load.
-- **Batch animation**: scramble and solve enqueue the entire sequence up front
-  (so the Move Log shows all buttons at once), then auto-advance. Step mode
-  plays one move and stops.
-- **Step backward re-queues**: the original move is re-queued with its correct
-  log index so Step → replays it in the original order.
+- **Batch animation**: scramble and solve clear the log, then enqueue the entire
+  sequence up front (so the Move Log shows all buttons at once), then auto-advance.
+  Step mode plays one move and stops.
+- **Cursor model (step/branch/solve)**: `state.cursor` is the "current step"; the
+  cube's physical state is always `moves[0..cursor-1]`. Step →/← move the cursor
+  (Step-back animates the inverse and retreats, keeping the move in the log to
+  replay — there is **no separate redo stack**). A hand turn branches the log at
+  the cursor (discard moves past it, then append). **Solve clears the log first**
+  then computes the solution from the cube's *current physical state*
+  (`readFaceletString(cubies)`), so it always solves the cube as it actually is —
+  the earlier bug was a stale redo stack being replayed ahead of the solution.
 - **Solver lifecycle**: `Cube.initSolver()` is deferred in a `setTimeout(50ms)`;
   the Solve button awaits readiness.
 - **All code well-commented**, free of placeholder or missing functions.

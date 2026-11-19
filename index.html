@@ -541,11 +541,14 @@
    *  APP STATE + ANIMATION                                                    *
    * ---------------------------------------------------------------------- */
   const state = {
-    moves: [],          // move tokens executed this session (for the log)
+    moves: [],          // the full Move Log: every move recorded this session
+    cursor: 0,          // index of the CURRENT step: the cube's physical state is
+                       // exactly the moves in moves[0..cursor-1]. Steps beyond
+                       // `cursor` are "future" moves that have NOT been applied.
     busy: false,        // true while any move is queued/animating
     solving: false,
     current: null,      // active animation object
-    queue: [],          // pending animations
+    queue: [],          // pending animations for the active batch/step
     speed: 1,           // 1 = normal; higher = faster
     auto: false,        // true = the queue auto-advances (scramble/solve); false = Step buttons drive it
     counter: 0,
@@ -592,11 +595,14 @@
   const logCount = document.getElementById('log-count');
 
   // Render the Move Log as a grid of buttons, one per move, styled like the
-  // face buttons. state.playIndex selects which button is "current":
-  //   - playIndex === k  -> button k is highlighted, earlier ones "past",
-  //                         later ones "pending".
-  //   - playIndex === n  -> every button is "past" (the batch just finished).
-  //   - playIndex < 0    -> nothing played yet (empty when n === 0).
+  // face buttons. The cursor (`state.cursor`) splits the log into applied moves
+  // (index < cursor, "past") and future moves (index >= cursor, "pending");
+  // `state.playIndex` lights the move animating right now (or the last applied
+  // one when idle).
+  //   - playIndex === k  -> button k is highlighted "current".
+  //   - i < cursor       -> "past" (already turned into the cube's state).
+  //   - i >= cursor      -> "pending" (a future move, not yet applied).
+  //   - playIndex < 0    -> nothing highlighted yet (empty when n === 0).
   // The #move-log panel already has overflow-y-auto, so the grid scrolls when it
   // is taller than the panel; we also scroll the active button into view.
   function renderMoves() {
@@ -611,7 +617,7 @@
       b.textContent = mv;
       let cls = 'move-btn ';
       if (i === state.playIndex) cls += 'current';
-      else if (i < state.playIndex) cls += 'past';
+      else if (i < state.cursor) cls += 'past';
       else cls += 'pending';
       b.className = cls;
       logList.appendChild(b);
@@ -621,10 +627,18 @@
   }
 
   // --- Move execution ---
+  // Appending a token grows the log; it does NOT advance the cursor. The cursor
+  // only moves when a move is actually applied to the cube (finishMove), so
+  // `state.moves.length` may exceed `state.cursor` while future moves are shown
+  // in the log but not yet turned into the cube's physical state.
   function recordMove(token) {
     state.moves.push(token);
-    state.counter++;
-    counterEl.textContent = state.counter;
+    renderMoves();
+  }
+
+  function updateCounters() {
+    // The "Moves" tally is the number of moves actually applied to the cube.
+    counterEl.textContent = state.cursor;
   }
 
   function buildAnim(face, power, kind = 'turn') {
@@ -636,27 +650,28 @@
       face, power, move, totalAngle, axisVec,
       elapsed: 0, duration: moveDuration(power, kind),
       moving: null, // captured lazily at animation start (see startCurrent)
+      back: false,  // true = this anim undoes a move (a Step-back), cursor--
     };
   }
 
-  function queueMove(face, power = 0, { record = true, kind = 'turn' } = {}) {
-    const token = face + (power === 1 ? '2' : (power === 2 ? "'" : ''));
-    if (record) recordMove(token);
-    const anim = buildAnim(face, power, kind);
-    // Tag the Move-Log button this turn belongs to so startCurrent can highlight
-    // it. For a single manual turn it is simply the move just recorded.
-    anim.idx = record ? state.moves.length - 1 : undefined;
-    state.queue.push(anim);
-    if (!state.busy) { state.busy = true; startCurrent(); }
+  // Enqueue a single move as its own (non-auto) batch. `idx` is the move's slot
+  // in the log so startCurrent highlights the right button as the face turns.
+  function playOne(anim) {
+    anim.idx = anim.idx !== undefined ? anim.idx : state.moves.length - 1;
+    state.queue = [anim];
+    state.auto = false;
+    state.busy = true;
+    startCurrent();
   }
 
   // Enqueue an ENTIRE sequence up front so the Move Log can show every button at
-  // once, then start playing it. Each queued anim is tagged with its button index
-  // (its position in state.moves) so startCurrent lights the right button as that
-  // face turns. busy is set first so the queued moves don't auto-start one at a
-  // time — startCurrent is invoked once, at the end.
+  // once, then play it auto-advancing. Each queued anim is tagged with its slot
+  // in state.moves so startCurrent lights the right button as that face turns.
+  // busy is set first so the queued moves don't auto-start one at a time —
+  // startCurrent is invoked once, at the end.
   function runBatch(tokens, kind) {
     if (!tokens.length) return;
+    state.queue = [];
     state.auto = true;
     state.busy = true;
     for (const { face, power } of tokens) {
@@ -680,39 +695,44 @@
   }
 
   function startCurrent() {
-    if (!state.queue.length) { finishBatch(); return; }
+    if (!state.queue.length) { settle(); return; }
     const anim = state.queue.shift();
     beginAnim(anim);
     // Highlight the button for the move that is about to turn, BEFORE the first
     // frame renders, so each button lights up first and then the face turns.
-    state.playIndex = (anim.idx !== undefined && anim.idx >= 0)
-      ? anim.idx : state.moves.length - 1;
+    state.playIndex = anim.idx;
     renderMoves();
     if (!state.solving) setStatus('Turning…', 'busy');
   }
 
   function finishMove(anim) {
-    // Snap the model (integer-exact) and the meshes to the final state.
+    // Snap the model (integer-exact) and the meshes to the final state. A
+    // backward anim carries the inverse power, so applyMove undoes the move.
     applyMove(cubies, anim.face, anim.power);
     for (const { part } of anim.moving) {
       part.mesh.position.set(part.data.pos[0], part.data.pos[1], part.data.pos[2]);
       part.mesh.quaternion.copy(bodyQuat(part.data));
     }
+    // Advance (or retreat) the cursor to match the cube's new physical state.
+    state.cursor = anim.back ? state.cursor - 1 : anim.idx + 1;
+    updateCounters();
     state.current = null;
     if (state.queue.length) {
-      // Auto-advancing batches (scramble/solve) keep going; the Step buttons
-      // (auto=false) stop after one move, leaving the rest for the next step.
+      // Auto-advancing batches (scramble/solve) keep going; a single manual step
+      // (auto=false) stops here, leaving the log for the next step.
       if (state.auto) startCurrent();
-      else { state.busy = false; updatePausedStatus(); }
+      else { state.busy = false; settle(); }
     } else {
-      finishBatch();
+      settle();
     }
   }
 
-  function finishBatch() {
+  // The queue has drained: mark the run done and refresh the log/status. The last
+  // applied move stays lit (playIndex = cursor - 1); any moves beyond the cursor
+  // render as "pending" future moves.
+  function settle() {
     state.busy = false;
-    // Mark the whole sequence as done so every button shows the "past" look.
-    state.playIndex = state.moves.length;
+    state.playIndex = state.cursor - 1;
     if (state.solving) {
       state.solving = false;
       if (isSolved(cubies)) { setStatus('Solved', 'solved'); }
@@ -727,13 +747,6 @@
     if (isSolved(cubies)) setStatus('Solved', 'solved');
     else if (state.moves.length) setStatus('Scrambled', 'scrambled');
     else setStatus('Solved', 'solved');
-  }
-
-  // A batch paused between steps: report that more moves are waiting to play.
-  function updatePausedStatus() {
-    if (state.solving) setStatus('Solving — paused', 'solving');
-    else if (state.queue.length) setStatus('Paused — Step ▸ to continue', 'idle');
-    else updateIdleStatus();
   }
 
   // The per-frame animation update.
@@ -752,9 +765,20 @@
   }
 
   // --- High-level actions ---
+  // A face-button / keyboard turn is a NEW move that branches from the cursor:
+  // everything past the current step is discarded, the new move is appended at
+  // the cursor, and the cursor advances to include it.
   function userTurn(face, power) {
     if (state.busy) return;
-    queueMove(face, power);
+    const token = face + (power === 1 ? '2' : (power === 2 ? "'" : ''));
+    // Discard any future moves beyond the cursor, then append the new one.
+    state.moves.length = state.cursor;
+    renderMoves();
+    recordMove(token);
+    // The move is now the current step; animate it (single, non-auto).
+    const anim = buildAnim(face, power, 'turn');
+    anim.idx = state.moves.length - 1;
+    playOne(anim);
   }
 
   function scramble() {
@@ -794,13 +818,15 @@
   }
 
   function resetMoves() {
-    state.moves = []; state.counter = 0; state.playIndex = -1;
-    counterEl.textContent = '0';
+    state.moves = []; state.cursor = 0; state.queue = []; state.playIndex = -1;
+    updateCounters();
     renderMoves();
   }
 
-  // Solve using cubejs. Rebuilds the cubejs state from the 3D model, asks for
-  // a solution, then animates it move-by-move.
+  // Solve using cubejs. The physical cube is the source of truth: we read its
+  // current state (whatever the cursor/steps left it in) and ask cubejs for a
+  // solution from there. Like Scramble, the Move Log is cleared FIRST and the
+  // solution is the only thing queued, so the log never appends onto old moves.
   async function solve() {
     if (state.busy) return;
     if (!solverReady) await waitForSolver();
@@ -809,6 +835,8 @@
     const solution = cj.solve(); // e.g. "R U R' U' ..."
     const tokens = parseAlg(solution);
     if (!tokens.length) { setStatus('Already solved', 'solved'); return; }
+    // Clear the log first (the cube's physical state is unaffected — it's the
+    // source of truth), then queue the solution as the only batch.
     resetMoves();
     state.solving = true;
     setStatus('Solving…', 'solving');
@@ -973,49 +1001,31 @@
     if (e.key === 't' || e.key === 'T') { toggleDrawer(); return; }
   });
 
-  // Step through a sequence one move at a time. auto=false so each step plays a
-  // single move and stops, leaving the rest of the queue for the next step.
+  // Step through the log one move at a time, moving the cursor. auto=false so
+  // each step plays a single move and stops, leaving the rest of the log for the
+  // next step. The physical cube always tracks moves[0..cursor-1].
   function stepForward() {
     if (state.busy) return;
-    if (!state.queue.length) return;          // nothing parked to replay
-    // Step-back parks the undone moves as a LIFO stack (newest-undone on top /
-    // back of the queue).  Replay from the TOP so the log rebuilds in its
-    // original order and each re-recorded move lands — and highlights — in the
-    // exact slot it was removed from.  (A FIFO read would replay the wrong move
-    // first and highlight the wrong button.)
-    const a = state.queue.pop();
-    // Re-record the replayed move so the log stays consistent with the animation.
-    recordMove(a.face + (a.power === 1 ? '2' : (a.power === 2 ? "'" : '')));
-    a.idx = state.moves.length - 1;           // its slot now that it's back in the log
-    state.auto = false;
-    state.busy = true;
-    beginAnim(a);
-    // Light the re-recorded button before the first frame, like startCurrent.
-    state.playIndex = a.idx;
-    renderMoves();
-    setStatus('Turning…', 'busy');
+    if (state.cursor >= state.moves.length) return;  // nothing ahead to replay
+    // The next move is a "future" one still sitting in the log at the cursor.
+    const { face, power } = parseAlg(state.moves[state.cursor])[0];
+    const anim = buildAnim(face, power, 'turn');
+    anim.idx = state.cursor;
+    playOne(anim);
   }
 
   function stepBackward() {
     if (state.busy) return;
-    if (!state.moves.length) return;          // nothing executed to undo
-    const token = state.moves[state.moves.length - 1];
-    state.moves.pop(); state.counter--; counterEl.textContent = state.counter;
-    const { face, power } = parseAlg(token)[0];
+    if (state.cursor <= 0) return;                  // nothing applied to undo
+    // The move being undone is the current step, at moves[cursor-1]. It STAYS in
+    // the log (as a future move once the cursor retreats); we only animate its
+    // inverse into the cube and let the cursor slide back over it.
+    const { face, power } = parseAlg(state.moves[state.cursor - 1])[0];
     const inv = power === 0 ? 2 : (power === 2 ? 0 : power);
-    // Keep the original move queued so Step ▸ can replay it, tagged with the
-    // index it will occupy once re-recorded, so its button highlights correctly.
-    const orig = buildAnim(face, power, 'turn');
-    orig.idx = state.moves.length;
-    state.queue.push(orig);
-    // Animate the inverse now, stopping before the re-queued original.
-    state.auto = false;
-    state.busy = true;
-    beginAnim(buildAnim(face, inv, 'turn'));
-    // Remaining moves are shown as done; the just-undone button is dropped.
-    state.playIndex = state.moves.length;
-    renderMoves();
-    updateIdleStatus();
+    const anim = buildAnim(face, inv, 'turn');
+    anim.back = true;
+    anim.idx = state.cursor - 1;
+    playOne(anim);
   }
 
   /* ------------------------------------------------------------------------ *
@@ -1162,6 +1172,10 @@
       applyMove(cubies, face, power);
       for (const p of parts) { p.mesh.position.set(p.data.pos[0], p.data.pos[1], p.data.pos[2]); p.mesh.quaternion.copy(bodyQuat(p.data)); }
       recordMove(face + (power === 1 ? '2' : (power === 2 ? "'" : '')));
+      // No animation here, so finishMove won't run — advance the cursor to keep
+      // it aligned with the cube's physical state and refresh the counters.
+      state.cursor = state.moves.length;
+      updateCounters();
       updateIdleStatus();
     },
     applyAlg: function (alg) {
