@@ -48,6 +48,12 @@
      than flashing at the edge. */
   .drawer-unit { transition: transform .3s ease; --drawer-shift: -32rem; }
   .drawer-closed { transform: translateX(var(--drawer-shift)); }
+  /* Right-edge controls drawer: mirror of the left face drawer. Its default
+     --drawer-shift is a large POSITIVE value so that, before JS measures the
+     exact offset, the panel starts fully off the right edge instead of flashing
+     on screen.  The closing translate is rightward (+shift), leaving the tab on
+     the panel's left edge peeking at the screen's right edge. */
+  .drawer-unit-r { transition: transform .3s ease; --drawer-shift: 32rem; }
   /* The tab reads vertically, like a binder tab on the panel's right edge. */
   .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
   /* Move-log buttons: a compact grid of move tokens (5 per row), styled to
@@ -106,41 +112,61 @@
     </div>
   </header>
 
-  <!-- ======================= Right control panel ======================= -->
-  <aside class="fixed right-4 top-16 bottom-4 z-20 w-72 max-w-[320px] flex flex-col gap-3 pointer-events-none">
-    <!-- Status / log card -->
-    <section class="pointer-events-auto flex-1 min-h-0 flex flex-col rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Move Log</h2>
-        <span id="log-count" class="text-[11px] text-slate-500">0 moves</span>
-      </div>
-      <div id="move-log" class="scroll-thin flex-1 overflow-y-auto px-3 py-2 text-sm">
-        <p id="log-empty" class="text-slate-500 text-xs leading-relaxed px-1 py-1">
-          No moves yet. Use the buttons or keyboard to turn faces, then <b class="text-slate-300">Solve</b> to watch it come back.
-        </p>
-        <div id="log-list" class="grid grid-cols-5 gap-1.5 content-start"></div>
-      </div>
-    </section>
+  <!-- ======================= Controls (right edge) — slide-out drawer ======================= -->
+  <!-- Hidden at start: only a vertical "Controls" tab peeks out on the panel's
+       left edge (i.e. the screen's right edge). Click/tap the tab — or press 'c'
+       — to slide the panel out; do it again to slide it back.  The panel holds
+       the Move Log, the Animation-speed slider, and the five primary-action
+       buttons.  The status pill and move counter live in the header, so they stay
+       visible even when this drawer is closed. -->
+  <aside class="fixed right-4 top-16 bottom-4 z-20 pointer-events-none">
+    <div id="controls-drawer" class="drawer-unit-r drawer-closed flex items-stretch gap-1.5 h-full w-72 max-w-[320px]">
+      <!-- The binder tab: always visible, toggles the drawer on click/tap. A real
+           <button>, so a tap in Safari fires a click (works with no keyboard). -->
+      <button id="controls-drawer-tab"
+        class="pointer-events-auto writing-vertical flex items-center justify-center
+               text-[10px] uppercase tracking-wider font-semibold text-slate-300
+               bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 rounded-l-xl
+               px-2 py-3 cursor-pointer select-none touch-manipulation"
+        aria-controls="controls-drawer" aria-expanded="false"
+        aria-label="Show or hide the controls">Controls</button>
+      <!-- The panel: slides right to hide; the tab sits to its left. -->
+      <div class="pointer-events-auto flex flex-col gap-3 flex-1 min-w-0">
+        <!-- Status / log card -->
+        <section class="flex-1 min-h-0 flex flex-col rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Move Log</h2>
+            <span id="log-count" class="text-[11px] text-slate-500">0 moves</span>
+          </div>
+          <div id="move-log" class="scroll-thin flex-1 overflow-y-auto px-3 py-2 text-sm">
+            <p id="log-empty" class="text-slate-500 text-xs leading-relaxed px-1 py-1">
+              No moves yet. Use the buttons or keyboard to turn faces, then <b class="text-slate-300">Solve</b> to watch it come back.
+            </p>
+            <div id="log-list" class="grid grid-cols-5 gap-1.5 content-start"></div>
+          </div>
+        </section>
 
-    <!-- Speed -->
-    <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl px-4 py-3">
-      <div class="flex items-center justify-between mb-2">
-        <label for="speed" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Animation speed</label>
-        <span id="speed-val" class="text-xs text-slate-400 tabular-nums">1.0×</span>
-      </div>
-      <input id="speed" type="range" min="0.3" max="3" step="0.1" value="1"
-             class="w-full" />
-      <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Slow</span><span>Fast</span></div>
-    </section>
+        <!-- Speed -->
+        <section class="rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl px-4 py-3">
+          <div class="flex items-center justify-between mb-2">
+            <label for="speed" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Animation speed</label>
+            <span id="speed-val" class="text-xs text-slate-400 tabular-nums">1.0×</span>
+          </div>
+          <input id="speed" type="range" min="0.3" max="3" step="0.1" value="1"
+                 class="w-full" />
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Slow</span><span>Fast</span></div>
+        </section>
 
-    <!-- Primary actions -->
-    <section class="pointer-events-auto grid grid-cols-2 gap-2">
-      <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
-      <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Solve</button>
-      <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">Step →</button>
-      <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">← Step</button>
-      <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Reset</button>
-    </section>
+        <!-- Primary actions -->
+        <section class="grid grid-cols-2 gap-2">
+          <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
+          <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Solve</button>
+          <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">Step →</button>
+          <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">← Step</button>
+          <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Reset</button>
+        </section>
+      </div>
+    </div>
   </aside>
 
   <!-- ======================= Face buttons (left edge) — slide-out drawer ======================= -->
@@ -623,7 +649,10 @@
       logList.appendChild(b);
     });
     const cur = logList.children[state.playIndex];
-    if (cur) cur.scrollIntoView({ block: 'nearest' });
+    // Only scroll the active move into view when the controls drawer is open.  When
+    // the panel is hidden the log sits off the right edge, and scrollIntoView would
+    // otherwise try to pull the viewport over it — jarring the cube animation.
+    if (cur && controlsOpen) cur.scrollIntoView({ block: 'nearest' });
   }
 
   // --- Move execution ---
@@ -960,6 +989,41 @@
   // even on very fast, already-cached loads.
   requestAnimationFrame(() => requestAnimationFrame(() => applyShift(false)));
 
+  // --- Controls drawer (right edge) ---
+  // Mirror of the layer drawer: the panel hides off the right edge behind a
+  // vertical "Controls" tab that is its leftmost child.  Clicking/tapping the tab
+  // (or pressing 'c') slides the panel out; the tab stays on the screen's right
+  // edge when closed.  The slide lives on the inner .drawer-unit-r so it never
+  // fights the outer element's vertical positioning.  `controlsOpen` is read by
+  // renderMoves() to suppress the log's scroll-into-view while the panel — and
+  // therefore the log — is off-screen, so a face turn can't yank the viewport.
+  const controlsDrawer = document.getElementById('controls-drawer');
+  const controlsTab = document.getElementById('controls-drawer-tab');
+  let controlsOpen = false;
+  function applyControlsShift(animate) {
+    // Positive shift pushes the panel off the right edge, leaving the tab on
+    // screen.  Same magnitude as the left drawer (unit width minus tab width).
+    const shift = controlsDrawer.offsetWidth - controlsTab.offsetWidth;
+    controlsDrawer.style.transition = animate ? '' : 'none';
+    controlsDrawer.style.setProperty('--drawer-shift', shift + 'px');
+    controlsDrawer.classList.toggle('drawer-closed', !controlsOpen);
+    controlsTab.setAttribute('aria-expanded', String(controlsOpen));
+  }
+  function toggleControls() { controlsOpen = !controlsOpen; applyControlsShift(true); }
+  // A click is enough to toggle, so a tap in Safari works with no keyboard.
+  controlsTab.onclick = toggleControls;
+  function armControlsDrawer() {
+    applyControlsShift(false);
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => applyControlsShift(false)).observe(controlsDrawer);
+    } else {
+      addEventListener('resize', () => applyControlsShift(false));
+    }
+  }
+  if (document.readyState === 'complete') requestAnimationFrame(armControlsDrawer);
+  else addEventListener('load', armControlsDrawer);
+  requestAnimationFrame(() => requestAnimationFrame(() => applyControlsShift(false)));
+
   // --- Primary buttons ---
   document.getElementById('btn-scramble').onclick = scramble;
   document.getElementById('btn-solve').onclick = () => solve();
@@ -999,6 +1063,7 @@
     if (e.key === '0') { resetCube(); return; }
     if (e.key === 's') scramble();
     if (e.key === 't' || e.key === 'T') { toggleDrawer(); return; }
+    if (e.key === 'c' || e.key === 'C') { toggleControls(); return; }
   });
 
   // Step through the log one move at a time, moving the cursor. auto=false so
