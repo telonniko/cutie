@@ -957,7 +957,18 @@
   // panel on screen.  A transform never changes the observed box, so this can't
   // loop the ResizeObserver back into itself.
   function applyShift(animate) {
-    const shift = -(faceDrawer.offsetWidth - faceTab.offsetWidth);
+    // The panel slides off the LEFT edge.  A plain `-(offsetWidth - tabWidth)`
+    // stops it at the *unit's* left edge, but the outer aside is `left-2` and the
+    // tab leaves a gap before the panel, so the panel pokes a few pixels (inset
+    // minus gap, ~2px) back into the viewport.  Fully clear it off the *viewport's*
+    // left edge instead: read the panel's open (unshifted) right edge and shift by
+    // its distance to the viewport's left edge.  The brief class toggle runs
+    // synchronously with the transition off, so the browser never paints the
+    // intermediate open position — only the final closed frame is painted.
+    const panel = faceDrawer.children[0];
+    faceDrawer.style.transition = 'none';
+    faceDrawer.classList.remove('drawer-closed');
+    const shift = -panel.getBoundingClientRect().right;
     faceDrawer.style.transition = animate ? '' : 'none';
     faceDrawer.style.setProperty('--drawer-shift', shift + 'px');
     faceDrawer.classList.toggle('drawer-closed', !drawerOpen);
