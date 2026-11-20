@@ -13,3 +13,6 @@ Icon\?
 
 # ignore downloaded node modules
 node_modules/
+
+# temporary test artifacts (screenshots, etc.) — the whole tmp/ tree is ignored
+/tmp/

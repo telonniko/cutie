@@ -1,5 +1,5 @@
 /**
- * tools/click-test.js — mouse-event / click tests:
+ * tests/click-test.js — mouse-event / click tests:
  *   - the drawer toggles via a tab click (tap on iPad)
  *   - three button columns: clockwise quarter (U…B), counter-clockwise
  *     quarter (U'…B'), and 180° half-turns (U2…B2)
@@ -37,6 +37,10 @@ const stateFor = (wrap, f) => (page) =>
   );
 
 (async () => {
+  // Screenshot output goes to the git-ignored tmp/ dir (created on demand).
+  const TMP = path.join(ROOT, 'tmp');
+  fs.mkdirSync(TMP, { recursive: true });
+
   const launchOpts = {
     headless: true,
     args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
@@ -61,6 +65,18 @@ const stateFor = (wrap, f) => (page) =>
   const drawerOpen = () => page.evaluate(
     () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
 
+  // The Controls drawer (right edge, holds the Reset button) is hidden behind its
+  // tab by default, so open it before clicking in. Idempotent: toggles only if
+  // currently closed.
+  const controlsOpen = () => page.evaluate(
+    () => document.getElementById('controls-drawer-tab').getAttribute('aria-expanded'));
+  const openControlsDrawer = async () => {
+    if ((await controlsOpen()) !== 'true') {
+      await page.click('#controls-drawer-tab');
+      await page.waitForTimeout(400); // let the .3s slide settle
+    }
+  };
+
   // ---- 1) The drawer toggles via the tab (a real click/tap). ---------------
   //    Runs first: if the toggle is broken, the button tests below are moot.
   //    Starts hidden; tapping the tab slides it out; tapping again slides it
@@ -83,7 +99,7 @@ const stateFor = (wrap, f) => (page) =>
   await page.mouse.down();
   let s = await stateFor('face-buttons', 'U')(page);
   check('plain down -> pressed + label U', s.pressed === true && s.text === 'U', JSON.stringify(s));
-  await page.screenshot({ path: 'docs/screenshots/face-pressed.png' });
+  await page.screenshot({ path: path.join(TMP, 'face-pressed.png') });
   await page.mouse.up();
   s = await stateFor('face-buttons', 'U')(page);
   check('plain up  -> restored flat + label U', s.pressed === false && s.text === 'U', JSON.stringify(s));
@@ -125,6 +141,7 @@ const stateFor = (wrap, f) => (page) =>
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
   // Reset to a known solved state.
   async function resetIdle() {
+    await openControlsDrawer(); // #btn-reset lives in the (default-hidden) Controls drawer
     await page.click('#btn-reset');
     await page.waitForTimeout(400);
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));

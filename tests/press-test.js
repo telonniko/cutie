@@ -1,5 +1,5 @@
 /**
- * tools/press-test.js — keyboard-shortcut tests:
+ * tests/press-test.js — keyboard-shortcut tests:
  *   - 't' toggles the layer-button drawer open/closed
  *   - Alt/Option + face key performs a 180° half turn
  *     (Shift is the prime modifier; Alt is the half-turn modifier)
@@ -36,8 +36,20 @@ function findExecutable() {
   // The drawer's open/closed state, read from the tab's aria-expanded attribute.
   const drawerOpen = () => page.evaluate(
     () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
+  // The Controls drawer (right edge, holds the Reset button) is hidden behind its
+  // tab by default, so open it before clicking in. Idempotent: toggles only if
+  // currently closed.
+  const controlsOpen = () => page.evaluate(
+    () => document.getElementById('controls-drawer-tab').getAttribute('aria-expanded'));
+  const openControlsDrawer = async () => {
+    if ((await controlsOpen()) !== 'true') {
+      await page.click('#controls-drawer-tab');
+      await page.waitForTimeout(400); // let the .3s slide settle
+    }
+  };
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
   async function resetIdle() {
+    await openControlsDrawer(); // #btn-reset lives in the (default-hidden) Controls drawer
     await page.click('#btn-reset');
     await page.waitForTimeout(400);
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
