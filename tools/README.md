@@ -10,6 +10,7 @@ the documentation screenshots. Run everything from the **project root**.
 | `verify.js` | Unit-tests the cube-core math | Node, `cubejs` | `npm run verify` or `node tools/verify.js` |
 | `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tools/press-test.js` |
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tools/click-test.js` |
+| `controls-drawer-test.js` | Controls-drawer auto-close-on-overlap tests | Node, Playwright + Chromium | `node tools/controls-drawer-test.js` |
 | `render-screenshot.js` | Captures the project screenshots | Node, Playwright + Chromium, ImageMagick | `npm run screenshot` or `node tools/render-screenshot.js` |
 
 ## Prerequisites
@@ -29,7 +30,7 @@ these, since they are dev-only.
 
 - `verify.js` needs **`cubejs`** (a devDependency, used only by the tooling —
   the app itself loads cubejs from a CDN).
-- `press-test.js`, `click-test.js`, and `render-screenshot.js` need **Playwright** and a headless
+- `press-test.js`, `click-test.js`, `controls-drawer-test.js`, and `render-screenshot.js` need **Playwright** and a headless
   Chromium. On macOS, **ImageMagick** (`magick` / `convert`) is also required by
   `render-screenshot.js` to composite the cube frame over the UI.
 
@@ -72,6 +73,22 @@ left-edge controls):
   deferral, no double-click detection); a half-turn button turns 180°.
 - The panel hides behind a tab; clicking the tab slides it open and closed
   (works on iPad with no keyboard).
+
+Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
+test hook.
+
+## controls-drawer-test.js
+
+Playwright-driven tests for the right-edge **Controls drawer auto-close on
+overlap**. When the drawer is open and its panel (including the tab, read from
+the drawer's own bounding box) overlaps the cube's on-screen area, clicking
+**Scramble** or **Solve** slides the drawer closed first so the cube animation
+stays visible; on a non-overlapping layout it is left open. Each scenario opens
+the drawer via its tab, clicks the action button, and reads the tab's
+`aria-expanded` to confirm the result:
+
+- narrow viewport (drawer covers the cube): Scramble and Solve **auto-close** it.
+- wide viewport (drawer clear of the cube): Scramble and Solve **leave it open**.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.

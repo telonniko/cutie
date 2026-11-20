@@ -6,6 +6,7 @@
   "scripts": {
     "verify": "node tools/verify.js",
     "verify:cursor": "node tools/verify-cursor.js",
+    "test:drawer": "node tools/controls-drawer-test.js",
     "screenshot": "node tools/render-screenshot.js"
   },
   "devDependencies": {
