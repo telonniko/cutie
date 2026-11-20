@@ -1001,9 +1001,21 @@
   const controlsTab = document.getElementById('controls-drawer-tab');
   let controlsOpen = false;
   function applyControlsShift(animate) {
-    // Positive shift pushes the panel off the right edge, leaving the tab on
-    // screen.  Same magnitude as the left drawer (unit width minus tab width).
-    const shift = controlsDrawer.offsetWidth - controlsTab.offsetWidth;
+    // The panel slides off the SAME side as the unit's inset: the outer aside is
+    // `right-4` and the tab leaves a gap before the panel, so a plain
+    // `offsetWidth - tabWidth` shift only brings the tab flush to the *unit's*
+    // right edge, which sits inset from the viewport — leaving the panel peeking
+    // (inset minus gap, ~10px) of buttons and move log at the edge.  The left
+    // drawer doesn't hit this because its panel slides off the opposite edge, where
+    // the inset pushes it further out.  Fully clear the panel off the *viewport's*
+    // right edge instead: read the panel's open (unshifted) left edge and shift by
+    // its distance to the viewport's right edge.  The brief class toggle below runs
+    // synchronously (transition off), so the browser never paints the intermediate
+    // open position — the only painted frame is the final one.
+    const panel = controlsDrawer.children[1];
+    controlsDrawer.style.transition = 'none';
+    controlsDrawer.classList.remove('drawer-closed');
+    const shift = window.innerWidth - panel.getBoundingClientRect().left;
     controlsDrawer.style.transition = animate ? '' : 'none';
     controlsDrawer.style.setProperty('--drawer-shift', shift + 'px');
     controlsDrawer.classList.toggle('drawer-closed', !controlsOpen);
