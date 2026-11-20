@@ -1036,6 +1036,39 @@
     controlsTab.setAttribute('aria-expanded', String(controlsOpen));
   }
   function toggleControls() { controlsOpen = !controlsOpen; applyControlsShift(true); }
+  // Close the drawer (if open), sliding the panel off the right edge.
+  function closeControls() { if (controlsOpen) { controlsOpen = false; applyControlsShift(true); } }
+  // True when the open controls drawer — the WHOLE panel including its tab, read
+  // from its own bounding box — geometrically overlaps the cube's on-screen area.
+  // The cube's world-space AABB is projected to screen pixels through the camera;
+  // the drawer's rect is its getBoundingClientRect(). Used to decide whether a
+  // Scramble/Solve (which animate the cube) should first slide the drawer away so
+  // the animation stays visible.
+  function controlsPanelOverlapsCube() {
+    const d = controlsDrawer.getBoundingClientRect();
+    if (d.width === 0 || d.height === 0) return false;
+    const drawer = { l: d.left, r: d.right, t: d.top, b: d.bottom };
+    const box = new THREE.Box3().setFromObject(cubeGroup);
+    if (box.isEmpty()) return false;
+    const { min, max } = box;
+    const corners = [
+      [min.x, min.y, min.z], [max.x, min.y, min.z], [min.x, max.y, min.z], [max.x, max.y, min.z],
+      [min.x, min.y, max.z], [max.x, min.y, max.z], [min.x, max.y, max.z], [max.x, max.y, max.z],
+    ];
+    let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+    const p = new THREE.Vector3();
+    for (const c of corners) {
+      p.set(c[0], c[1], c[2]).project(camera);
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue; // corner behind camera
+      const x = (p.x * 0.5 + 0.5) * innerWidth;
+      const y = (-p.y * 0.5 + 0.5) * innerHeight;
+      if (x < l) l = x; if (x > r) r = x;
+      if (y < t) t = y; if (y > b) b = y;
+    }
+    if (!Number.isFinite(l)) return false; // every corner projected off / behind the camera
+    // Standard axis-aligned rectangle intersection test.
+    return !(r < drawer.l || l > drawer.r || b < drawer.t || t > drawer.b);
+  }
   // A click is enough to toggle, so a tap in Safari works with no keyboard.
   controlsTab.onclick = toggleControls;
   function armControlsDrawer() {
@@ -1051,8 +1084,13 @@
   requestAnimationFrame(() => requestAnimationFrame(() => applyControlsShift(false)));
 
   // --- Primary buttons ---
-  document.getElementById('btn-scramble').onclick = scramble;
-  document.getElementById('btn-solve').onclick = () => solve();
+  // Scramble and Solve animate the cube, so first make room: when the controls
+  // drawer is open and its panel (with tab) would sit on top of the cube, slide
+  // it away so the animation stays visible. Non-overlapping (e.g. wide screens)
+  // is left open.
+  const closeControlsOverCube = () => { if (controlsOpen && controlsPanelOverlapsCube()) closeControls(); };
+  document.getElementById('btn-scramble').onclick = () => { closeControlsOverCube(); scramble(); };
+  document.getElementById('btn-solve').onclick = () => { closeControlsOverCube(); solve(); };
   document.getElementById('btn-reset').onclick = resetCube;
   document.getElementById('btn-stepfwd').onclick = stepForward;
   document.getElementById('btn-stepbwd').onclick = stepBackward;
