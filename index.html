@@ -1315,8 +1315,44 @@
   </script>
 
   <!-- ======================= Bottom-left attribution ======================= -->
-  <div class="fixed bottom-4 left-4 z-20 pointer-events-none">
+  <div id="attribution" class="fixed bottom-4 left-4 z-20 pointer-events-none">
     <p class="text-[11px] text-slate-400">created with qwen3.8:27b-mlx-4bit</p>
   </div>
+
+  <!-- ======================= Dismiss onboarding hints ======================= -->
+  <!-- Fade out and remove the two onboarding hints (the drag-to-orbit card and
+       the bottom-left attribution) on the FIRST key press or pointer interaction
+       anywhere in the viewport — including any shortcut key and any button/tab
+       click. A capture-phase document listener catches every such event no matter
+       which element it starts from, and we do NOT stop propagation, so the app's
+       own key/click handlers keep working. Both hints are pointer-events:none, so
+       the dismissing interaction passes through them. -->
+  <script>
+    (function hideHintsOnFirstInteraction() {
+      const hints = [document.getElementById('drag-hint'), document.getElementById('attribution')].filter(Boolean);
+      if (!hints.length) return;
+      const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let dismissed = false;
+
+      const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        document.removeEventListener('keydown', dismiss, true);
+        document.removeEventListener('pointerdown', dismiss, true);
+        for (const el of hints) {
+          const remove = () => el.remove();
+          if (REDUCED) { remove(); continue; }  // skip the animation
+          el.style.transition = 'opacity 300ms ease-out';
+          void el.offsetWidth;                   // flush so the opacity change animates
+          el.style.opacity = '0';
+          el.addEventListener('transitionend', remove, { once: true });
+          setTimeout(remove, 360);               // fallback if transitionend never fires
+        }
+      };
+
+      document.addEventListener('keydown', dismiss, true);
+      document.addEventListener('pointerdown', dismiss, true);
+    })();
+  </script>
 </body>
 </html>
