@@ -173,7 +173,7 @@ Move notation is what the **Move Log** shows.
 
 - [Three.js](https://threejs.org/) — 3D rendering & camera controls
 - [cubejs](https://www.cs.usc.edu/~pwadler/cubelys/cubejs.html) — optimal solver
-- [Tailwind CSS](https://tailwindcss.com/) — UI styling
+- [Tailwind CSS v4](https://tailwindcss.com/) — UI styling (browser build)
 - Vanilla JavaScript — game logic & animations
 
 No backend required.

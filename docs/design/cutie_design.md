@@ -8,7 +8,7 @@ client-side with no external backend required. All libraries are loaded from CDN
 
 ## 1. Library Loading
 
-- **Tailwind CSS** via CDN.
+- **Tailwind CSS** v4 (via the browser Play CDN build).
 - **Three.js** (latest) as an **ES module** from a CDN — the app script is
   `type="module"` and re-exports it as `window.THREE` (three.js is ESM-only
   after r150).
@@ -298,8 +298,8 @@ Tailwind, vanilla JS).
   (panel's right edge). The horizontal slide lives on an inner `.drawer-unit`
   transform so it never fights the outer element's vertical centering. Toggle is
   a `click` on the tab (works on iPad, no keyboard) or the `T` key.
-- **Drawer first-load race**: Tailwind loads via the runtime **Play CDN
-  `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
+- **Drawer first-load race**: Tailwind v4's browser build loads via the runtime
+  **Play CDN `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
   module first runs. Measuring the closed shift that early is too small and
   leaves the panel peeking. The shift is therefore kept at a fully-hidden CSS
   default until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable

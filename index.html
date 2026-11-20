@@ -4,7 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Cutie — 3D Rubik's Cube Solver</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind CSS v4 browser build (Play CDN equivalent). Global UMD-style script that
+     scans the DOM and injects styles at runtime, so the existing first-load
+     drawer-race handling below still applies. -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <!-- three.js is now ESM-only (the UMD/global build/three.min.js was removed after
      r150). It is imported as an ES module by the app script at the bottom of the
      body and re-exposed as window.THREE, so the rest of the code is unchanged.
@@ -208,9 +211,9 @@
   </div>
 
   <!-- Drag-to-rotate hint on the canvas -->
-  <div id="drag-hint" class="fixed left-4 top-16 z-20 pointer-events-none">
-    <div class="rounded-xl bg-slate-900/60 backdrop-blur ring-1 ring-white/10 px-3 py-1.5 text-[11px] text-slate-400">
-      Drag to orbit · Scroll to zoom
+  <div id="drag-hint" class="fixed left-4 top-17 z-20 pointer-events-none">
+    <div class="rounded-xl bg-slate-900/60 backdrop-blur-sm ring-1 ring-white/10 px-3 py-1.5 text-[11px] text-slate-400">
+      Drag to orbit · Scroll/Pinch to zoom
     </div>
   </div>
 
