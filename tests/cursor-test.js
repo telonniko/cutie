@@ -1,5 +1,5 @@
 /**
- * tools/verify-cursor.js
+ * tests/cursor-test.js
  * ----------------------
  * Headless simulation of the new "cursor" Move-Log model to prove that:
  *   1. stepping back/forward moves the cursor (cube always = moves[0..cursor-1]);
@@ -7,7 +7,7 @@
  *   3. solve() always solves the cube regardless of where the cursor is,
  *      discarding any future moves and appending the solution.
  *
- * Run:  node tools/verify-cursor.js
+ * Run:  node tests/cursor-test.js
  */
 const fs = require('fs');
 const path = require('path');

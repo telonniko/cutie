@@ -1,5 +1,5 @@
 /**
- * tools/controls-drawer-test.js — auto-close-on-overlap tests for the
+ * tests/controls-drawer-test.js — auto-close-on-overlap tests for the
  * right-edge Controls drawer:
  *
  *   When the Controls drawer is open AND its panel (including the tab, read
@@ -16,7 +16,7 @@
  *     - narrow viewport (drawer covers the cube) + Solve    -> auto-closes
  *     - wide   viewport (drawer clear of the cube) + Solve    -> stays open
  *
- * Needs: Node, Playwright + Chromium.  Run: `node tools/controls-drawer-test.js`
+ * Needs: Node, Playwright + Chromium.  Run: `node tests/controls-drawer-test.js`
  */
 const path = require('path');
 const fs = require('fs');

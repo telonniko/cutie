@@ -1,6 +1,6 @@
 /**
- * tools/verify.js
- * ----------------
+ * tests/cube-core-test.js
+ * -----------------------
  * Proves that the cube-core geometry inlined in index.html exactly matches
  * cubejs's model, by:
  *   1. extracting the code between the  CUBE:START / CUBE:END  sentinels in
@@ -9,7 +9,7 @@
  *   3. comparing `readFaceletString()` output to `Cube.fromString/asString`,
  *      and running full solve round-trips through cubejs.
  *
- * Run:  node tools/verify.js   (from the project root)
+ * Run:  node tests/cube-core-test.js   (from the project root)
  */
 const fs = require('fs');
 const path = require('path');

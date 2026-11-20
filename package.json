@@ -4,9 +4,9 @@
   "description": "A single-file, client-side 3D Rubik's Cube solver with cubejs-powered solving.",
   "type": "commonjs",
   "scripts": {
-    "verify": "node tools/verify.js",
-    "verify:cursor": "node tools/verify-cursor.js",
-    "test:drawer": "node tools/controls-drawer-test.js",
+    "verify": "node tests/cube-core-test.js",
+    "verify:cursor": "node tests/cursor-test.js",
+    "test:drawer": "node tests/controls-drawer-test.js",
     "screenshot": "node tools/render-screenshot.js"
   },
   "devDependencies": {

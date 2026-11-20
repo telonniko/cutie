@@ -1,5 +1,5 @@
 /**
- * tools/click-test.js — mouse-event / click tests:
+ * tests/click-test.js — mouse-event / click tests:
  *   - the drawer toggles via a tab click (tap on iPad)
  *   - three button columns: clockwise quarter (U…B), counter-clockwise
  *     quarter (U'…B'), and 180° half-turns (U2…B2)
