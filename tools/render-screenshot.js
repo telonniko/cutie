@@ -4,9 +4,16 @@
  * Drives the real index.html in headless Chromium (Playwright) and produces
  * the three project screenshots — solved, scrambled, and solved-after-solve.
  *
+ * Each shot shows BOTH slide-out drawers open (the layer-button panel on the
+ * left, the controls panel on the right) with the cube in the gap — the layout
+ * the app produces on a wide screen.  The scramble and solve are triggered by
+ * clicking the real Scramble / Solve buttons (not by pushing an algorithm in
+ * directly), so the captures always reflect the current app code — including the
+ * randomized scramble length.
+ *
  * Because headless Chromium does not reliably sync the WebGL <canvas> into
  * `page.screenshot()` output, each shot is composed of:
- *   1. `window.__RUBIKS__.readFrame()` → raw RGBA pixels read from the GL
+ *   1. `window.__RUBIKS__.renderFrame()` → raw RGBA pixels read from the GL
  *      back buffer via gl.readPixels (bypasses the 2D-canvas sync issue).
  *   2. `page.screenshot()` → the DOM UI.
  *   3. Compose: the cube PNG (from step 1, encoded via ImageMagick) is
@@ -38,10 +45,6 @@ function findExecutable() {
   for (const c of candidates) if (fs.existsSync(c)) return c;
   return undefined;
 }
-
-// The "scrambled" screenshot uses this fixed scramble sequence (a representative
-// mid-length shuffle) applied to a solved cube.
-const SCRAMBLE_1 = "F2 R D' F2 B' R U' B' L B R2 F L2 R F R2 D' L R D F' B' U' L";
 
 // Convert a base64-encoded raw RGBA pixel buffer to a PNG file via ImageMagick.
 // ImageMagick v7 (magick) reads headerless pixels with `-size WxH -depth 8` and
@@ -92,48 +95,54 @@ async function main() {
     execFileSync('magick', [uiPng, cubePng, '-compose', 'over', '-gravity', 'NorthWest', '-geometry', '+0+0', '-composite', path.join(OUT, name)]);
   }
 
-  // ---- Drawer (layer-button panel) state per shot -------------------------
-  // The scrambled shot shows the open panel (the buttons in use); the solved and
-  // solved-after shots keep it hidden so the viewport stays clean.  Clicking the
-  // tab is the real user gesture (it works on iPad with no keyboard).
-  async function setDrawer(open) {
-    const isOpen = await page.evaluate(
-      () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded') === 'true');
-    if (isOpen !== open) {
-      await page.click('#face-drawer-tab');
-      await page.waitForTimeout(400);   // let the .3s slide settle
+  // ---- Drawer state per shot ----------------------------------------------
+  // All three shots show BOTH slide-out drawers open (the layer-button panel on
+  // the left, the controls panel on the right), with the cube in the gap between
+  // them — the layout the app produces on a wide screen.  Opening a drawer is a
+  // tab click, the real user gesture (it works on iPad with no keyboard).  The
+  // check-and-toggle makes each shot explicit and independent of the viewport.
+  async function setDrawers(open) {
+    for (const sel of ['#face-drawer-tab', '#controls-drawer-tab']) {
+      const isOpen = await page.evaluate(
+        (s) => document.querySelector(s).getAttribute('aria-expanded') === 'true', sel);
+      if (isOpen !== open) {
+        await page.click(sel);
+        await page.waitForTimeout(400);   // let the .3s slide settle
+      }
     }
   }
 
-  // ---- 1. Solved (initial state, panel hidden) ----
-  await setDrawer(false);
+  // ---- 1. Solved (initial state, both drawers open) ----
   await page.evaluate(() => window.__RUBIKS__.setCamera());
-  await page.waitForTimeout(600);
+  await setDrawers(true);
+  await page.waitForTimeout(300);
   await snap('solved.png');
   console.log('✓ solved.png       status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
-  // ---- 2. Scrambled (panel shown) ----
-  const s1 = SCRAMBLE_1;
-  await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), s1);
-  // Render the Move Log as a grid of move buttons (all "done") so the shot shows
-  // the full scramble sequence, then let the button styles settle before capture.
+  // ---- 2. Scrambled (drive the real Scramble button; both drawers open) ----
+  // Clicking the button is what a user does, so the shot reflects the current
+  // scramble() (a random 18–35 move sequence) rather than a hard-coded one.  Wait
+  // for the animation to finish, then render the log with every move as "done" so
+  // the shot shows the full scramble as a grid of move-buttons.
+  await setDrawers(true);
+  await page.click('#btn-scramble');
+  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(60000));
   await page.evaluate(() => window.__RUBIKS__.syncLog());
+  await setDrawers(true);
   await page.waitForTimeout(300);
-  await setDrawer(true);
   await snap('scrambled.png');
   console.log('✓ scrambled.png    status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
-  // ---- 3. Solved-after-solve (panel hidden) ----
-  const facelets = await page.evaluate(() => window.__RUBIKS__.readFaceletString());
-  const solution = await page.evaluate((fl) => window.Cube.fromString(fl).solve(), facelets);
-  console.log('   solver => ' + solution + ' (' + solution.split(' ').length + ' moves)');
-  // Mirror the app's Solve button: clear the log first, then show only the
-  // solution sequence as a grid of move buttons.
-  await page.evaluate(() => window.__RUBIKS__.clearLog());
-  await page.evaluate((alg) => window.__RUBIKS__.applyAlg(alg), solution);
+  // ---- 3. Solved-after-solve (drive the real Solve button; both drawers open) ----
+  // Same idea: click Solve and wait for the animation to end, so the shot shows
+  // the solution the solver actually computes.  The log ends showing the full
+  // solution as a grid of move-buttons, and the cube is solved again.
+  await setDrawers(true);
+  await page.click('#btn-solve');
+  await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(60000));
   await page.evaluate(() => window.__RUBIKS__.syncLog());
+  await setDrawers(true);
   await page.waitForTimeout(300);
-  await setDrawer(false);
   await snap('solved-after.png');
   console.log('✓ solved-after.png status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 

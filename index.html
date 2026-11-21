@@ -236,8 +236,8 @@
    *  CUBE CORE — the framework-free mathematical model of the cube.
    *
    *  This block (between the CUBE:START and CUBE:END sentinels) is also
-   *  extracted and unit-tested by tools/verify.js against cubejs, which proves
-   *  the 3D geometry matches the solver exactly.
+   *  extracted and unit-tested by tests/cube-core-test.js against cubejs, which
+   *  proves the 3D geometry matches the solver exactly.
    * ==========================================================================*/
   // === CUBE:START ===
   const FACE_LETTERS = ['U', 'D', 'L', 'R', 'F', 'B'];
@@ -351,7 +351,7 @@
   }
   const isSolved = cubies => readFaceletString(cubies) === SOLVED;
 
-  // Expose the pure-model API (used by tools/verify.js in Node; harmless in the
+  // Expose the pure-model API (used by tests/cube-core-test.js in Node; harmless in the
   // browser). `const` declarations don't become properties of the global, so we
   // surface them explicitly.
   self.CubeCore = { buildCubies, applyMove, readFaceletString, isSolved, parseAlg, MOVES };
@@ -1334,28 +1334,6 @@
     get busy() { return state.busy; },
     get status() { return state.status; },
     get cubies() { return cubies; },
-    // Drive one move (no animation) — used for instant screenshots.
-    applyInstant: (face, power) => {
-      applyMove(cubies, face, power);
-      for (const p of parts) { p.mesh.position.set(p.data.pos[0], p.data.pos[1], p.data.pos[2]); p.mesh.quaternion.copy(bodyQuat(p.data)); }
-      recordMove(face + (power === 1 ? '2' : (power === 2 ? "'" : '')));
-      // No animation here, so finishMove won't run — advance the cursor to keep
-      // it aligned with the cube's physical state and refresh the counters.
-      state.cursor = state.moves.length;
-      updateCounters();
-      updateIdleStatus();
-    },
-    applyAlg: function (alg) {
-      // Iterate in a plain function so `this` stays bound even when callers
-      // detach the method (e.g. page.evaluate((a) => hook.applyAlg(a)) from the
-      // screenshot harness). Keeps the harness simple.
-      for (const { face, power } of parseAlg(alg)) this.applyInstant(face, power);
-    },
-    solveToSolved: async function (alg) {
-      this.applyAlg(alg);
-      if (!solverReady) await waitForSolver();
-      return solve();
-    },
     setCamera: () => { controls.setView(HOME_POS); controls.spherical.theta = controls.thetaTarget; controls.spherical.phi = controls.phiTarget; controls.spherical.radius = controls.radiusTarget; },
 
     // Freeze the animation loop, render a frame, and return it as raw RGBA

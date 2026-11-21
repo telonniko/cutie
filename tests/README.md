@@ -80,7 +80,7 @@ Runs the cube-core math in a fresh Node VM context (no browser).
 
 Keyboard-shortcut tests for the cube UI:
 
-- `T` toggles the layer-button drawer open/closed.
+- `T` toggles the face-button drawer open/closed.
 - `Alt`/`Option` + a face key performs a 180° half turn (two `Alt+U` return
   to solved; `Shift` remains the prime modifier).
 
@@ -131,8 +131,8 @@ test hook.
 ## The `window.__RUBIKS__` test hook
 
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
-capture: solver readiness/status getters, `applyInstant` / `applyAlg` for
-instant state changes, `setCamera`, `renderFrame` / `readFrame` (raw RGBA
-pixels, bypassing the unreliable 2D-canvas sync in headless Chromium),
-`syncLog` / `clearLog` for the Move Log, and `waitUntilIdle`. The Playwright
-tests above rely on it.
+capture: solver readiness/status getters, `setCamera`, `renderFrame` / `readFrame`
+(raw RGBA pixels, bypassing the unreliable 2D-canvas sync in headless Chromium),
+`syncLog` / `clearLog` for the Move Log, and `waitUntilIdle`. State changes go
+through the real UI (clicking the Scramble/Solve buttons), so tests reflect the
+app's current behavior. The Playwright tests above rely on it.

@@ -1,8 +1,8 @@
 # Cutie — 3D Interactive Rubik's Cube Solver
 
-Create a complete, single-file HTML application (`index.html`) that renders a 3D,
-interactive 3×3×3 Rubik's Cube simulation in the browser. It must run 100%
-client-side with no external backend required. All libraries are loaded from CDNs.
+Cutie is a complete, single-file HTML application (`index.html`) that renders a
+3D, interactive 3×3×3 Rubik's Cube simulation in the browser. It runs 100%
+client-side with no external backend, and every library is loaded from a CDN.
 
 ---
 
@@ -29,8 +29,8 @@ client-side with no external backend required. All libraries are loaded from CDN
 - Since three.js r155, light intensities are ~π× the old "legacy" values.
 
 ### Cubies
-- Build **26 visible cubies** (27 grid positions; the center core has no colored
-  faces). Each is a rounded box with a dark body material.
+- The cube is **26 visible cubies** (27 grid positions; the center core has no
+  colored faces). Each is a rounded box with a dark body material.
 - Each outward face gets a **sticker** child — a smaller rounded box oriented so
   its local +z axis aligns with the face normal.
 - **Standard face colors**: White (U), Yellow (D), Blue (F), Green (B), Orange
@@ -64,8 +64,8 @@ The cube state is tracked in **facelet string** form matching cubejs exactly
 ### Extractable core
 - The cube-core code lives between `// === CUBE:START ===` and
   `// === CUBE:END ===` sentinels so it can be extracted and unit-tested in Node
-  (`tools/verify.js`). The core has **no DOM or Three.js dependencies** — it is
-  pure math. Exposed via `self.CubeCore`.
+  by `tests/cube-core-test.js` (`npm run verify`). The core has **no DOM or
+  Three.js dependencies** — it is pure math. Exposed via `self.CubeCore`.
 
 ### Move notation
 Standard **Singmaster notation**: `U D L R F B`, `'` (counter-clockwise),
@@ -114,8 +114,8 @@ on desktop.
 |--------|--------|
 | **Scramble** | Random 18–35 move scramble, no two consecutive same-face, animated. Clears the log first. |
 | **Solve** | Clear the log, then compute the solution via cubejs from the cube's current state and animate it step-by-step. |
-| **Step →** | Advance the current step one move (replay the next move in the log) and stop. |
 | **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. |
+| **Step →** | Advance the current step one move (replay the next move in the log) and stop. |
 | **Reset** | Instantly return to solved, clear the log. |
 
 ### Solve behavior
@@ -160,7 +160,13 @@ on desktop.
 - Status values: "Solved", "Scrambled", "Turning…", "Scrambling…",
   "Solving…", "Solved (best effort)", "Already solved".
 
-### Right control panel
+### Controls drawer (right edge)
+- A **slide-out drawer** — the mirror of the face-button drawer, on the right. It
+  holds the Move Log, the speed slider, and the primary-action buttons. It
+  **opens at startup on a wide screen and stays closed on a narrow one**, and it
+  **auto-closes** (independently of the other drawer) when a Scramble/Solve would
+  slide it onto the cube. Tapping its vertical "Controls" tab (or pressing `C`)
+  toggles it.
 - **Move Log**: grid of move-buttons (5 per row), one per move token. Three
   visual states driven by the **cursor** — **past** (index `< cursor`, faint
   done look), **pending** (index `>= cursor`, dim), **current** (the move
@@ -172,15 +178,19 @@ on desktop.
   (described in §4).
 
 ### Face buttons panel (left edge)
-- A **slide-out drawer**: hidden at start, only a vertical "Turn a layer" tab is
-  visible on the panel's right edge. Tapping the tab (or pressing `T`) slides the
-  panel out; tapping again slides it back. The tab is the rightmost child, so
-  hiding the panel (sliding it left) leaves the tab on screen.
+- A **slide-out drawer**: it **opens at startup on a wide screen and stays closed
+  on a narrow one** (the same shared rule as the controls drawer), and
+  auto-closes when a Scramble/Solve would slide it onto the cube. While closed,
+  only a vertical "Turn a layer" tab is visible on the panel's right edge. Tapping
+  the tab (or pressing `T`) slides the panel out; tapping again slides it back. The
+  tab is the rightmost child, so hiding the panel (sliding it left) leaves the tab
+  on screen.
 - Glassy panel, three button columns (clockwise quarter, counter-clockwise
   quarter, half). No top label — the tab *is* the "Turn a layer" label.
 
 ### Misc
-- **Drag-to-rotate hint**: small pill "Drag to orbit · Scroll to zoom".
+- **Drag-to-rotate hint**: a small pill, centered horizontally near the top, "Drag
+  to orbit · Scroll/Pinch to zoom"; it fades out on the first interaction.
 - **Solver toast**: centered bottom toast with spinner ("Warming up the
   solver…"), also reused for error messages, auto-hiding after ~4s.
 
@@ -198,7 +208,8 @@ on desktop.
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U` `D` `L` `R` `F` `B` | Turn that face counter-clockwise |
 | `Alt` + `U` `D` `L` `R` `F` `B` | Turn that face 180° (half turn) |
-| `T` | Toggle the layer-button drawer open / closed |
+| `T` | Toggle the face-button (layer) drawer open / closed |
+| `C` | Toggle the controls drawer open / closed |
 
 Face-turn keys are matched via `e.code` (physical key, e.g. `KeyU`), not
 `e.key` (composed character).  On macOS `Option+U` sets `e.key` to the
@@ -214,34 +225,44 @@ fields are ignored, and repeat events are ignored for face turns.
 
 ### `window.__RUBIKS__` hook
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
-capture. It provides: solver readiness and status getters, `applyInstant` /
-`applyAlg` for instant state changes, `setCamera`, `renderFrame` / `readFrame`
-for capturing the GL back buffer as raw RGBA pixels (bypassing the unreliable
-2D-canvas sync in headless Chromium), `syncLog` / `clearLog` for the Move Log,
-and `waitUntilIdle`.
+capture. It provides: solver readiness/status getters, `setCamera`,
+`renderFrame` / `readFrame` for capturing the GL back buffer as raw RGBA pixels
+(bypassing the unreliable 2D-canvas sync in headless Chromium), `syncLog` /
+`clearLog` for the Move Log, `readFaceletString` / `isSolved`, and
+`waitUntilIdle`. State changes in tests and the screenshot harness go through the
+real UI (clicking the Scramble/Solve buttons), not an instant apply — so the
+captures always reflect the app's current behavior.
 
-### `tools/verify.js`
+### `tests/cube-core-test.js`
 Node unit tests that extract the cube core (between the sentinels), evaluate it
 in a VM context alongside cubejs, and verify: all 18 single moves match cubejs,
 a 300-move random sequence matches, and solve round-trips through cubejs.
-Run: `node tools/verify.js`.
+Run: `node tests/cube-core-test.js` (`npm run verify`).
 
-### `tools/verify-cursor.js`
+### `tests/cursor-test.js`
 Node regression test for the **cursor model** (the move-log step/branch logic).
 It mirrors the app's cursor behavior against the cube core + cubejs and proves:
 scramble → step back 3 → **solve** still ends solved; a hand turn branches the
 log at the cursor; Solve clears the log (log length == solution length); stepping
 back to 0 makes the cube solved again; and step-back-then-step-forward reproduces
-a move. Run: `node tools/verify-cursor.js` (`npm run verify:cursor`).
+a move. Run: `node tests/cursor-test.js` (`npm run verify:cursor`).
 
-### `tools/press-test.js`
+### `tests/drawers-test.js`
+Playwright tests for the two slide-out drawers' auto-close-on-overlap and
+width-dependent startup. For each drawer, a narrow viewport starts it **closed**
+(the panel would cover the cube) while a wide one starts it **open**; the test
+clicks **Scramble**/**Solve** and reads each tab's `aria-expanded` to confirm the
+drawer auto-closes when it would cover the cube and stays open when it doesn't.
+Run: `node tests/drawers-test.js` (`npm run test:drawer`).
+
+### `tests/press-test.js`
 Keyboard-shortcut tests:
-- `T` toggles the drawer open/closed.
+- `T` toggles the face-button drawer open/closed.
 - `Alt`/`Option` + a face key performs a 180° half turn (two `Alt+U`
   return to solved; `Shift` remains the prime modifier).
-- Run: `node tools/press-test.js`.
+- Run: `node tests/press-test.js`.
 
-### `tools/click-test.js`
+### `tests/click-test.js`
 Playwright tests for face-button mouse/click behavior:
 - Pressed visual state on quarter, prime, and half-turn buttons.
 - Labels are fixed (no Shift-driven prime preview, no ambient repaint).
@@ -249,34 +270,36 @@ Playwright tests for face-button mouse/click behavior:
 - Action: two half-turn clicks return to solved (2 × 180° = 360°).
 - Action: four single prime (counter-clockwise) clicks return to solved
   (4 × 90° counter = 360°).
-- The drawer starts closed; clicking the tab toggles it open/closed
-  (works on iPad with no keyboard).
-- Run: `node tools/click-test.js`.
+- The face drawer opens at startup on a wide viewport and starts closed on a
+  narrow one; clicking the tab toggles it (works on iPad with no keyboard).
+- Run: `node tests/click-test.js`.
 
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
-screenshots — solved, scrambled, solved-after — by compositing the GL frame
-(transparent background) over the DOM UI. Outputs to `docs/screenshots/`.
-Run: `node tools/render-screenshot.js`.
+screenshots — solved, scrambled, solved-after — each with **both drawers open**
+and the cube in the gap between them. It drives the **real Scramble and Solve
+buttons** (so the shots reflect the current randomized scramble and solver),
+waiting for each animation to finish, then composites the GL frame (transparent
+background) over the DOM UI. Outputs to `docs/screenshots/`.
+Run: `node tools/render-screenshot.js` (`npm run screenshot`).
 
 ---
 
 ## 8. Screenshot Gallery
 
-Create `docs/screenshots/index.html` — a standalone gallery page showing the
-three screenshots (solved, scrambled, solved-after) in a 3-column grid with
-branded header, step badges, status dots, captions, hover effects, and a
-dark theme matching the app.
+A standalone gallery page (`docs/screenshots/index.html`) shows the three
+screenshots (solved, scrambled, solved-after) in a 3-column grid with a branded
+header, step badges, status dots, captions, hover effects, and a dark theme
+matching the app.
 
 ---
 
 ## 9. README.md
 
-Create a `README.md` in the project root with: title and description,
-screenshot table + gallery link, how to run (double-click `index.html`), how to
-play (4 steps), UI description, keyboard shortcuts table,
-move notation explanation, how it works, and a tech list (Three.js, cubejs,
-Tailwind, vanilla JS).
+The project-root `README.md` has: a title and description, a screenshot table
++ gallery link, how to run (double-click `index.html`), how to play (4 steps), a
+UI description, a keyboard shortcuts table, a move-notation explanation, a
+how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 
 ---
 
@@ -294,10 +317,11 @@ Tailwind, vanilla JS).
   of buttons (`U'…B'`), so no modifier is needed for the on-screen controls. The
   face *keys* keep `Shift` as the prime modifier and `Alt`/`Option` as the
   half-turn modifier for desktop keyboards.
-- **Drawer, not a static panel**: the layer buttons hide behind a vertical tab
-  (panel's right edge). The horizontal slide lives on an inner `.drawer-unit`
-  transform so it never fights the outer element's vertical centering. Toggle is
-  a `click` on the tab (works on iPad, no keyboard) or the `T` key.
+- **Drawers, not static panels**: both the layer buttons (left edge) and the
+  controls panel (right edge) hide behind a vertical tab. The horizontal slide
+  lives on an inner `.drawer-unit` transform so it never fights the outer
+  element's vertical centering. Each toggle is a `click` on the tab (works on
+  iPad, no keyboard) or the `T` (face) / `C` (controls) key.
 - **Drawer first-load race**: Tailwind v4's browser build loads via the runtime
   **Play CDN `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
   module first runs. Measuring the closed shift that early is too small and

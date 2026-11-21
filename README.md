@@ -67,7 +67,14 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   (**Solved**, **Scrambled**, **Turning…**, **Solving…**) and a live **Moves**
   counter.
 
-### Right control panel
+### Controls drawer (right edge) — a slide-out drawer
+The Move Log, speed slider, and primary-action buttons live in a panel that
+**hides behind a tab** on the right edge — the mirror of the face-button drawer
+on the left. On a wide screen the app opens **both** drawers at startup (cube in
+the gap between them); on a narrow one they start closed, and either drawer
+auto-closes when a Scramble/Solve would slide it onto the cube. The tab is a
+vertical **"Controls"** handle on the panel's left edge; **`C`** toggles it from
+the keyboard (Tab drives focus navigation, so it's not used here).
 - **Move Log** — the executed moves shown as a **grid of move-buttons, 5 per
   row** (each button is one token like `R`, `U'`, `F2`), styled to match the
   face buttons. As a scramble or solve animates, the button for the move being
@@ -83,15 +90,18 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   | --- | --- |
   | **Scramble** | Apply a random scramble with animation (clears the log first). |
   | **Solve** | Clear the log, then compute + animate the solution for the cube as it is now. |
-  | **Step →** | Advance the current step one move (replay the next move in the log). |
   | **← Step** | Step the current position back one move (undo, keeping it in the log to replay). |
+  | **Step →** | Advance the current step one move (replay the next move in the log). |
   | **Reset** | Instantly return the cube to the solved state. |
 
 ### Face buttons (left edge) — a slide-out drawer
 The face buttons live in a panel that **hides behind a tab** on the left edge,
-so the cube viewport stays clear. The tab is a vertical **"Turn a layer"**
-handle (like a tab in a binder) that sits on the panel's **right** edge; it is
-always visible, and the panel itself slides in from the left when opened:
+so the cube viewport stays clear. Like the controls drawer, it **opens at
+startup on a wide screen and stays closed on a narrow one**, and auto-closes when
+a Scramble/Solve would slide it onto the cube. The tab is a vertical **"Turn a
+layer"** handle (like a tab in a binder) that sits on the panel's **right**
+edge; it is always visible, and the panel itself slides in from the left when
+opened:
 
 - **Tap the tab** to slide the panel out and reveal the buttons; **tap it again**
   to slide it back. The toggle is a `click` on a real `<button>`, so it works
@@ -131,7 +141,8 @@ half turn) still work as shortcuts.
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U D L R F B` | Turn that face counter-clockwise |
 | `Alt` + `U D L R F B` | Turn that face 180° (half turn) |
-| `T` | Toggle the layer-button drawer open / closed |
+| `T` | Toggle the face-button (layer) drawer open / closed |
+| `C` | Toggle the controls drawer open / closed |
 
 ---
 
