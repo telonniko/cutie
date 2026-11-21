@@ -49,15 +49,17 @@ between them. The scrambled and solved-after frames are produced by clicking the
 **real Scramble and Solve buttons** and waiting for each animation to finish — so
 the captures always reflect the current app (including the randomized scramble
 length), not a hard-coded sequence. `window.__RUBIKS__` also exposes
-`readFaceletString`, `syncLog`, `clearLog`, `setCamera`, and `setPixelRatio` for
-the harness.
+`syncLog` (render the Move Log grid instantly), `setCamera`, `setPixelRatio`,
+`isSolved`, and `waitUntilIdle` for the harness.
 
 ## The `window.__RUBIKS__` test hook
 
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
-capture: solver readiness/status getters, `setCamera`, `renderFrame` / `readFrame`
-(raw RGBA pixels, bypassing the unreliable 2D-canvas sync in headless Chromium),
-`syncLog` / `clearLog` for the Move Log, and `waitUntilIdle`. State changes go
-through the real UI (clicking the Scramble/Solve buttons), so captures and tests
-reflect the app's current behavior. `render-screenshot.js` and the Playwright
-tests in `../tests/` rely on it.
+capture: it is a **capture/sync bridge, not a state driver** — it no longer
+applies moves, so captures and tests reflect what the app actually does. It
+provides `ready` / `status` getters, `setCamera`, `renderFrame` (raw RGBA pixels
+from the GL back buffer, bypassing the unreliable 2D-canvas sync in headless
+Chromium), `setPixelRatio`, `syncLog` to render the Move Log grid instantly,
+`isSolved`, and `waitUntilIdle`. State changes go through the real UI (clicking
+the Scramble/Solve buttons). `render-screenshot.js` and the Playwright tests in
+`../tests/` rely on it.
