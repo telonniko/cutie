@@ -90,9 +90,16 @@ the keyboard (Tab drives focus navigation, so it's not used here).
   | --- | --- |
   | **Scramble** | Apply a random scramble with animation (clears the log first). |
   | **Solve** | Clear the log, then compute + animate the solution for the cube as it is now. |
-  | **← Step** | Step the current position back one move (undo, keeping it in the log to replay). |
-  | **Step →** | Advance the current step one move (replay the next move in the log). |
+  | **← Step** | Step the current position back one move (undo, keeping it in the log to replay). Disabled at the start of the log — nothing applied yet to undo. |
+  | **Step →** | Advance the current step one move (replay the next move in the log). Disabled at the end of the log — nothing left to replay. |
   | **Reset** | Instantly return the cube to the solved state. |
+
+  The two step buttons **disable themselves** when there is no move in that
+  direction: **← Step** greys out at the start of the log (nothing applied to
+  undo) and **Step →** greys out at the end (nothing future to replay). In the
+  middle of the log both are live. The flags refresh only when a move finishes
+  and the sequence settles, so a Scramble/Solve animating through many moves
+  never flickers the buttons on screen.
 
 ### Face buttons (left edge) — a slide-out drawer
 The face buttons live in a panel that **hides behind a tab** on the left edge,
