@@ -167,8 +167,8 @@
         <section class="grid grid-cols-2 gap-2">
           <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
           <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Solve</button>
-          <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">← Step</button>
-          <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">Step →</button>
+          <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">← Step</button>
+          <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">Step →</button>
           <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Reset</button>
         </section>
       </div>
@@ -778,6 +778,10 @@
       updateIdleStatus();
     }
     renderMoves();
+    // A batch/single-step has just drained: refresh the step buttons once here
+    // (the cursor now reflects the cube's settled state). Doing it in settle —
+    // not on each finishMove — is what stops the buttons flickering mid-sequence.
+    updateStepButtons();
   }
 
   function updateIdleStatus() {
@@ -852,6 +856,7 @@
     }
     resetMoves();
     updateIdleStatus();
+    updateStepButtons();
   }
 
   function resetMoves() {
@@ -1130,8 +1135,31 @@
   document.getElementById('btn-scramble').onclick = () => { closeControlsOverCube(); closeFaceDrawerOverCube(); scramble(); };
   document.getElementById('btn-solve').onclick = () => { closeControlsOverCube(); closeFaceDrawerOverCube(); solve(); };
   document.getElementById('btn-reset').onclick = resetCube;
-  document.getElementById('btn-stepfwd').onclick = stepForward;
-  document.getElementById('btn-stepbwd').onclick = stepBackward;
+  const stepFwdBtn = document.getElementById('btn-stepfwd');
+  const stepBwdBtn = document.getElementById('btn-stepbwd');
+  stepFwdBtn.onclick = stepForward;
+  stepBwdBtn.onclick = stepBackward;
+
+  // Keep the step buttons' enabled/disabled state in sync with the log + cursor.
+  // "← Step" (back) is enabled while a move has been applied to the cube and can
+  // still be undone — i.e. while the cursor is past 0. "Step →" (forward) is
+  // enabled while a future move is still waiting to be replayed — i.e. while the
+  // cursor is before the end of the log. With an empty log at the start (cursor
+  // 0, no moves) both are disabled.
+  //
+  // This is a pure visual reflection of the guards already inside
+  // stepForward/stepBackward (`cursor >= moves.length` / `cursor <= 0`); it never
+  // changes the step logic, only the buttons' appearance and clickability.
+  //
+  // It runs only at "rest" points — the initial load, after a Reset, and when a
+  // scramble/solve/step sequence drains in settle() — and deliberately NOT on
+  // every move during a batch. So while a scramble or solve is animating the
+  // buttons are left exactly as they were until the whole sequence finishes, then
+  // refreshed once. That is what keeps them from flickering on screen.
+  function updateStepButtons() {
+    stepBwdBtn.disabled = state.cursor <= 0;
+    stepFwdBtn.disabled = state.cursor >= state.moves.length;
+  }
 
   const speed = document.getElementById('speed');
   const speedVal = document.getElementById('speed-val');
@@ -1243,6 +1271,7 @@
   // Initial status + render.
   resetMoves();
   updateIdleStatus();
+  updateStepButtons();
   initSolver();
   requestAnimationFrame(animate);
 

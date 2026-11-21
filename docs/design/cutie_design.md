@@ -114,9 +114,19 @@ on desktop.
 |--------|--------|
 | **Scramble** | Random 18–35 move scramble, no two consecutive same-face, animated. Clears the log first. |
 | **Solve** | Clear the log, then compute the solution via cubejs from the cube's current state and animate it step-by-step. |
-| **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. |
-| **Step →** | Advance the current step one move (replay the next move in the log) and stop. |
+| **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. **Disabled at the start of the log** (cursor 0, nothing applied to undo). |
+| **Step →** | Advance the current step one move (replay the next move in the log) and stop. **Disabled at the end of the log** (cursor == log length, nothing future to replay). |
 | **Reset** | Instantly return to solved, clear the log. |
+
+The two step buttons **grey out (and stop accepting clicks) when there is no move
+in that direction to apply**: `← Step` disables while the cursor is at 0, and
+`Step →` disables while the cursor is at the end of the log; in the middle of the
+log both are live. This is a pure visual reflection of the guards already inside
+`stepForward`/`stepBackward` — it never changes the step logic. The flags refresh
+only at "rest" points (initial load, after a Reset, and when a batch/single-step
+drains in `settle()`), **not on every move of a running Scramble/Solve**, so the
+buttons don't flicker while a sequence animates (see the *Cursor model* note in
+§10).
 
 ### Solve behavior
 - **Clears the Move Log first** (like Scramble), then reads the cube's current
@@ -139,6 +149,14 @@ on desktop.
 - A **hand turn** (face button / face key) **branches from the cursor**: it
   discards every move past the cursor, appends the new move, and advances the
   cursor — so the log forks at the current step instead of blindly appending.
+- **Button enable/disable tracks the cursor.** `updateStepButtons()` sets
+  `← Step`'s `disabled` to `cursor <= 0` (no applied move to undo) and `Step →`'s
+  to `cursor >= moves.length` (no future move to replay) — the exact negation of
+  the guards inside `stepForward`/`stepBackward`. It is called **only at rest**: on
+  the initial load, after a `Reset` (`resetCube`), and once per sequence when its
+  queue drains in `settle()`. It is *not* called on every `finishMove`, so while a
+  Scramble/Solve animates through many moves the buttons keep their pre-sequence
+  state and refresh just once at the end — no flicker.
 
 ### Animation speed slider
 - Range slider (0.3–3, step 0.1, default 1.0) with "Slow"/"Fast" labels.
@@ -275,6 +293,26 @@ Playwright tests for face-button mouse/click behavior:
   narrow one; clicking the tab toggles it (works on iPad with no keyboard).
 - Run: `node tests/click-test.js`.
 
+### `tests/step-buttons-test.js`
+Playwright tests for the **"← Step" / "Step →" enable/disable** state. The
+buttons disable when the Move Log has no move in that direction to apply —
+`← Step` while the cursor is at 0, `Step →` while the cursor is at the end of
+the log — and re-enable as the cursor moves. It also proves a **Scramble/Solve
+never flickers the buttons mid-sequence**: the flags are read during the batch
+(unchanged) and after it drains (`settle` refreshes them once). Checks, in
+order:
+- Fresh log / after Reset: **both** buttons disabled.
+- After one applied move: `← Step` enabled, `Step →` disabled.
+- Stepped back to the start: `← Step` disabled, `Step →` enabled; stepped to the
+  end, `← Step` enabled and `Step →` disabled.
+- Mid-sequence Scramble: buttons left untouched (no flicker); after it settles,
+  `← Step` enabled and `Step →` disabled; in the middle of a long log both are
+  live; walked all the way back, `← Step` disables again.
+- Disabled flags are read from the buttons' `disabled` DOM property (independent
+  of whether the Controls drawer is open), and the test runs at 3× speed so the
+  random 18–35 move scramble drains within its wait timeout.
+- Run: `node tests/step-buttons-test.js` (`npm run test:step`).
+
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
 screenshots — solved, scrambled, solved-after — each with **both drawers open**
@@ -333,6 +371,12 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 - **Batch animation**: scramble and solve clear the log, then enqueue the entire
   sequence up front (so the Move Log shows all buttons at once), then auto-advance.
   Step mode plays one move and stops.
+- **Step-button enable/disable**: `updateStepButtons()` mirrors the cursor into the
+  two step buttons — `← Step` disabled at cursor 0, `Step →` disabled at the end of
+  the log. It runs **only at rest** (initial load, after Reset, and when a batch or
+  single-step drains in `settle()`), never per-`finishMove`, so a running
+  Scramble/Solve leaves the buttons untouched and refreshes them once at the end —
+  the buttons don't flicker.
 - **Cursor model (step/branch/solve)**: `state.cursor` is the "current step"; the
   cube's physical state is always `moves[0..cursor-1]`. Step →/← move the cursor
   (Step-back animates the inverse and retreats, keeping the move in the log to

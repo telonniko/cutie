@@ -22,6 +22,7 @@ any failure), so they double as smoke tests and as CI gates.
 | `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tests/press-test.js` |
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
 | `drawers-test.js` | Both-drawer (controls + face) auto-close-on-overlap tests | Node, Playwright + Chromium | `node tests/drawers-test.js` |
+| `step-buttons-test.js` | "← Step" / "Step →" enable/disable tracking with the cursor | Node, Playwright + Chromium | `npm run test:step` or `node tests/step-buttons-test.js` |
 
 ## Prerequisites
 
@@ -124,6 +125,32 @@ result:
 
 - narrow viewport (drawers cover the cube): Scramble and Solve **auto-close** both.
 - wide viewport (drawers clear of the cube): Scramble and Solve **leave both open**.
+
+Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
+test hook.
+
+## step-buttons-test.js
+
+Playwright-driven tests for the **"← Step" / "Step →" enable/disable** state. The
+buttons disable when the Move Log has no move left to apply in that direction —
+"← Step" while the cursor is at 0 (nothing applied to undo), "Step →" while the
+cursor is at the end of the log (nothing future to replay) — and re-enable as the
+cursor moves. It also proves a **Scramble/Solve does not flicker the buttons
+mid-sequence**: the flags are left untouched while the batch animates and refreshed
+once when it drains. Checks, in order:
+
+- Fresh log / after Reset: **both** buttons disabled.
+- After one applied move: "← Step" enabled, "Step →" disabled.
+- Stepped back to the start: "← Step" disabled, "Step →" enabled.
+- Stepped to the end: "← Step" enabled, "Step →" disabled.
+- Mid-sequence Scramble: buttons left untouched (no flicker); after it settles,
+  "← Step" enabled and "Step →" disabled.
+- In the middle of a long log: **both** enabled; walked all the way back, "← Step"
+  disables again; Reset re-disables both.
+
+The disabled flags are read straight from the buttons' `disabled` DOM property
+(works whether or not the Controls drawer is open), and the test runs at 3× speed
+so the random 18–35 move scramble drains within its wait timeout.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.
