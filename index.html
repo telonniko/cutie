@@ -1392,17 +1392,19 @@
     <p class="text-[11px] text-slate-400">created with qwen3.8:27b-mlx-4bit</p>
   </div>
 
-  <!-- ======================= Dismiss onboarding hints ======================= -->
-  <!-- Fade out and remove the two onboarding hints (the drag-to-orbit card and
-       the bottom-left attribution) on the FIRST key press or pointer interaction
-       anywhere in the viewport — including any shortcut key and any button/tab
-       click. A capture-phase document listener catches every such event no matter
-       which element it starts from, and we do NOT stop propagation, so the app's
-       own key/click handlers keep working. Both hints are pointer-events:none, so
-       the dismissing interaction passes through them. -->
+  <!-- ======================= Dismiss the drag-to-orbit hint ======================= -->
+  <!-- Fade out and remove the drag-to-orbit onboarding hint on the FIRST key press
+       or pointer interaction anywhere in the viewport — including any shortcut key
+       and any button/tab click. A capture-phase document listener catches every
+       such event no matter which element it starts from, and we do NOT stop
+       propagation, so the app's own key/click handlers keep working. The hint is
+       pointer-events:none, so the dismissing interaction passes through it.
+       The bottom-left attribution (the "created with qwen3.8:27b-mlx-4bit" credit
+       card) is intentionally NOT a hint: it is not in this dismiss list and stays
+       visible at all times. -->
   <script>
     (function hideHintsOnFirstInteraction() {
-      const hints = [document.getElementById('drag-hint'), document.getElementById('attribution')].filter(Boolean);
+      const hints = [document.getElementById('drag-hint')].filter(Boolean);
       if (!hints.length) return;
       const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       let dismissed = false;

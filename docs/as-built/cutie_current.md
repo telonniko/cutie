@@ -209,6 +209,9 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 ### Misc
 - **Drag-to-rotate hint**: a small pill, centered horizontally near the top, "Drag
   to orbit · Scroll/Pinch to zoom"; it fades out on the first interaction.
+- **Attribution (credit card)**: a small bottom-left line, "created with
+  qwen3.8:27b-mlx-4bit"; it stays visible at all times and is NOT an onboarding
+  hint (not dismissed on first interaction).
 - **Solver toast**: centered bottom toast with spinner ("Warming up the
   solver…"), also reused for error messages, auto-hiding after ~4s.
 
