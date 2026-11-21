@@ -1331,32 +1331,22 @@
    * ---------------------------------------------------------------------- */
   window.__RUBIKS__ = {
     get ready() { return solverReady; },
-    get busy() { return state.busy; },
     get status() { return state.status; },
-    get cubies() { return cubies; },
     setCamera: () => { controls.setView(HOME_POS); controls.spherical.theta = controls.thetaTarget; controls.spherical.phi = controls.phiTarget; controls.spherical.radius = controls.radiusTarget; },
 
-    // Freeze the animation loop, render a frame, and return it as raw RGBA
-
-    // pixels. The harness turns these into a PNG and composites them over the
-    // full-page screenshot (headless Chromium doesn't sync the GL canvas into
-
-    // page.screenshot). `setPixelRatio(1)` is called by the harness so the
-
-    // returned buffer matches the viewport 1:1.
-
-    readFrame,
-
+    // Render a frame with a transparent background and return its pixels as raw
+    // RGBA. Headless Chromium doesn't sync the GL canvas into page.screenshot, so
+    // the harness reads the GL back buffer itself (gl.readPixels, inside
+    // renderFrame), decodes it to a PNG, and composites it over the full-page
+    // screenshot. `setPixelRatio(1)` is called by the harness so the returned
+    // buffer matches the viewport 1:1.
     renderFrame,
 
     setPixelRatio,
 
-    // Screenshot-only helpers: render / clear the Move Log grid instantly (no
-    // animation) so a captured frame shows the move-button sequence.
-    clearLog: () => resetMoves(),
+    // Screenshot-only helper: render the Move Log grid with every move as "done"
+    // (no animation) so a captured frame shows the full move-button sequence.
     syncLog: () => { state.playIndex = state.moves.length; renderMoves(); },
-
-    readFaceletString: () => readFaceletString(cubies),
 
     isSolved: () => isSolved(cubies),
     waitUntilIdle: (maxMs = 10000) => new Promise(res => {

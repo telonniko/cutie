@@ -225,12 +225,13 @@ fields are ignored, and repeat events are ignored for face turns.
 
 ### `window.__RUBIKS__` hook
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
-capture. It provides: solver readiness/status getters, `setCamera`,
-`renderFrame` / `readFrame` for capturing the GL back buffer as raw RGBA pixels
-(bypassing the unreliable 2D-canvas sync in headless Chromium), `syncLog` /
-`clearLog` for the Move Log, `readFaceletString` / `isSolved`, and
-`waitUntilIdle`. State changes in tests and the screenshot harness go through the
-real UI (clicking the Scramble/Solve buttons), not an instant apply — so the
+capture. It is a **capture/sync bridge, not a state driver** — it no longer
+applies moves, so the captures reflect what the app actually does. It provides:
+`ready` / `status` getters, `setCamera`, `renderFrame` for capturing the GL back
+buffer as raw RGBA pixels (bypassing the unreliable 2D-canvas sync in headless
+Chromium), `setPixelRatio`, `syncLog` to render the Move Log grid instantly,
+`isSolved`, and `waitUntilIdle`. State changes in tests and the screenshot
+harness go through the real UI (clicking the Scramble/Solve buttons) — so the
 captures always reflect the app's current behavior.
 
 ### `tests/cube-core-test.js`

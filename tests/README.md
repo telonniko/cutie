@@ -131,8 +131,11 @@ test hook.
 ## The `window.__RUBIKS__` test hook
 
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
-capture: solver readiness/status getters, `setCamera`, `renderFrame` / `readFrame`
-(raw RGBA pixels, bypassing the unreliable 2D-canvas sync in headless Chromium),
-`syncLog` / `clearLog` for the Move Log, and `waitUntilIdle`. State changes go
-through the real UI (clicking the Scramble/Solve buttons), so tests reflect the
-app's current behavior. The Playwright tests above rely on it.
+capture: it is a **capture/sync bridge, not a state driver** — it no longer
+applies moves, so the captures reflect what the app actually does. It provides
+`ready` / `status` getters, `setCamera`, `renderFrame` (raw RGBA pixels from the
+GL back buffer, bypassing the unreliable 2D-canvas sync in headless Chromium),
+`setPixelRatio`, `syncLog` to render the Move Log grid instantly, `isSolved`, and
+`waitUntilIdle`. State changes go through the real UI (clicking the
+Scramble/Solve buttons), so tests reflect the app's current behavior. The
+Playwright tests above rely on it.
