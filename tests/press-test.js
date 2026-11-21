@@ -36,9 +36,9 @@ function findExecutable() {
   // The drawer's open/closed state, read from the tab's aria-expanded attribute.
   const drawerOpen = () => page.evaluate(
     () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
-  // The Controls drawer (right edge, holds the Reset button) is hidden behind its
-  // tab by default, so open it before clicking in. Idempotent: toggles only if
-  // currently closed.
+  // The Controls drawer (right edge, holds the Reset button) is already open on
+  // this wide viewport, but open it before clicking in anyway. Idempotent:
+  // toggles only if currently closed.
   const controlsOpen = () => page.evaluate(
     () => document.getElementById('controls-drawer-tab').getAttribute('aria-expanded'));
   const openControlsDrawer = async () => {
@@ -56,13 +56,15 @@ function findExecutable() {
   }
 
   // ---- 1) 't' key toggles the drawer open/closed. --------------------------
-  check('drawer starts closed', await drawerOpen() === 'false', await drawerOpen());
-  await page.keyboard.press('t');
-  await page.waitForTimeout(400);
-  check('t key opens drawer', await drawerOpen() === 'true', await drawerOpen());
+  //    On this wide (1440px) viewport the layer drawer STARTS OPEN, so the first
+  //    't' slides it back and the second slides it out.
+  check('drawer starts open (wide viewport)', await drawerOpen() === 'true', await drawerOpen());
   await page.keyboard.press('t');
   await page.waitForTimeout(400);
   check('t key closes drawer', await drawerOpen() === 'false', await drawerOpen());
+  await page.keyboard.press('t');
+  await page.waitForTimeout(400);
+  check('t key re-opens drawer', await drawerOpen() === 'true', await drawerOpen());
 
   // ---- 2) Alt/Option + face key performs a 180° half turn. -----------------
   //    Half turns have no on-screen-only keyboard button, so Alt/Option is the

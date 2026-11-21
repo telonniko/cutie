@@ -10,7 +10,7 @@ are developer tooling. The test scripts live in `../tests/` (see
 | `render-screenshot.js` | Captures the project screenshots | Node, Playwright + Chromium, ImageMagick | `npm run screenshot` or `node tools/render-screenshot.js` |
 
 The test scripts (`cube-core-test.js`, `cursor-test.js`, `press-test.js`,
-`click-test.js`, `controls-drawer-test.js`) are in `../tests/`.
+`click-test.js`, `drawers-test.js`) are in `../tests/`.
 
 ## Prerequisites
 
@@ -44,16 +44,20 @@ compositing the cube's GL frame over the DOM UI:
 3. Compose: the cube PNG is overlaid on the UI at the canvas origin via
    ImageMagick.
 
-The "scrambled" frame uses a fixed, inlined scramble sequence applied to a solved
-cube (the cube can still be scrambled live via the **Scramble** button).
-`window.__RUBIKS__` also exposes `applyAlg`, `readFaceletString`, `syncLog`,
-`clearLog`, `setCamera`, and `setPixelRatio` for this purpose.
+Each frame is captured with **both drawers open** and the cube in the gap
+between them. The scrambled and solved-after frames are produced by clicking the
+**real Scramble and Solve buttons** and waiting for each animation to finish — so
+the captures always reflect the current app (including the randomized scramble
+length), not a hard-coded sequence. `window.__RUBIKS__` also exposes
+`readFaceletString`, `syncLog`, `clearLog`, `setCamera`, and `setPixelRatio` for
+the harness.
 
 ## The `window.__RUBIKS__` test hook
 
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
-capture: solver readiness/status getters, `applyInstant` / `applyAlg` for
-instant state changes, `setCamera`, `renderFrame` / `readFrame` (raw RGBA
-pixels, bypassing the unreliable 2D-canvas sync in headless Chromium),
-`syncLog` / `clearLog` for the Move Log, and `waitUntilIdle`. `render-screenshot.js`
-and the Playwright tests in `../tests/` rely on it.
+capture: solver readiness/status getters, `setCamera`, `renderFrame` / `readFrame`
+(raw RGBA pixels, bypassing the unreliable 2D-canvas sync in headless Chromium),
+`syncLog` / `clearLog` for the Move Log, and `waitUntilIdle`. State changes go
+through the real UI (clicking the Scramble/Solve buttons), so captures and tests
+reflect the app's current behavior. `render-screenshot.js` and the Playwright
+tests in `../tests/` rely on it.

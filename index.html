@@ -116,12 +116,15 @@
   </header>
 
   <!-- ======================= Controls (right edge) — slide-out drawer ======================= -->
-  <!-- Hidden at start: only a vertical "Controls" tab peeks out on the panel's
-       left edge (i.e. the screen's right edge). Click/tap the tab — or press 'c'
-       — to slide the panel out; do it again to slide it back.  The panel holds
-       the Move Log, the Animation-speed slider, and the five primary-action
-       buttons.  The status pill and move counter live in the header, so they stay
-       visible even when this drawer is closed. -->
+  <!-- Width-dependent at start: on a wide screen the panel opens straight away
+       (the controls panel + the cube + the layer drawer all fit), so the cube
+       sits in the gap between the two drawers. On a narrow screen it stays
+       closed — only a vertical "Controls" tab peeks out on the panel's left edge
+       (i.e. the screen's right edge). Click/tap the tab — or press 'c' — to slide
+       the panel out; do it again to slide it back.  The panel holds the Move Log,
+       the Animation-speed slider, and the five primary-action buttons.  The status
+       pill and move counter live in the header, so they stay visible even when
+       this drawer is closed. -->
   <aside class="fixed right-4 top-16 bottom-4 z-20 pointer-events-none">
     <div id="controls-drawer" class="drawer-unit-r drawer-closed flex items-stretch gap-1.5 h-full w-72 max-w-[320px]">
       <!-- The binder tab: always visible, toggles the drawer on click/tap. A real
@@ -164,8 +167,8 @@
         <section class="grid grid-cols-2 gap-2">
           <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
           <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Solve</button>
-          <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">Step →</button>
           <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">← Step</button>
+          <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition">Step →</button>
           <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Reset</button>
         </section>
       </div>
@@ -173,8 +176,10 @@
   </aside>
 
   <!-- ======================= Face buttons (left edge) — slide-out drawer ======================= -->
-  <!-- Hidden at start: only a vertical "Turn a layer" tab peeks out on the
-       panel's right edge. Click/tap the tab to slide the panel out; click it
+  <!-- Width-dependent at start: on a wide screen the panel opens straight away
+       (the layer drawer + the cube + the controls panel all fit); on a narrow
+       screen it stays closed and only a vertical "Turn a layer" tab peeks out on
+       the panel's right edge. Click/tap the tab to slide the panel out; click it
        again (or press 't') to slide it back.  Three columns: clockwise
        quarter-turns (U…B), counter-clockwise quarter-turns (U'…B'), and 180°
        half-turns (U2…B2).  Each button is one fixed move, so a tap always does
@@ -205,14 +210,14 @@
   <!-- ======================= Solver loading toast ======================= -->
   <div id="solver-toast" class="fixed left-1/2 bottom-6 -translate-x-1/2 z-30 hidden">
     <div class="flex items-center gap-2 rounded-xl bg-slate-900/90 backdrop-blur-md ring-1 ring-white/10 px-4 py-2.5 shadow-2xl">
-      <div class="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-      <span class="text-sm text-slate-200">Warming up the solver…</span>
+      <div class="w-6 h-6 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-xl text-slate-200">Warming up the solver…</span>
     </div>
   </div>
 
   <!-- Drag-to-rotate hint on the canvas -->
-  <div id="drag-hint" class="fixed left-4 top-17 z-20 pointer-events-none">
-    <div class="rounded-xl bg-slate-900/60 backdrop-blur-sm ring-1 ring-white/10 px-3 py-1.5 text-[11px] text-slate-400">
+  <div id="drag-hint" class="fixed left-1/2 -translate-x-1/2 top-17 z-20 pointer-events-none">
+    <div class="rounded-xl bg-slate-900/60 backdrop-blur-sm ring-1 ring-white/10 px-3 py-1.5 text-sm text-slate-400">
       Drag to orbit · Scroll/Pinch to zoom
     </div>
   </div>
@@ -231,8 +236,8 @@
    *  CUBE CORE — the framework-free mathematical model of the cube.
    *
    *  This block (between the CUBE:START and CUBE:END sentinels) is also
-   *  extracted and unit-tested by tools/verify.js against cubejs, which proves
-   *  the 3D geometry matches the solver exactly.
+   *  extracted and unit-tested by tests/cube-core-test.js against cubejs, which
+   *  proves the 3D geometry matches the solver exactly.
    * ==========================================================================*/
   // === CUBE:START ===
   const FACE_LETTERS = ['U', 'D', 'L', 'R', 'F', 'B'];
@@ -346,7 +351,7 @@
   }
   const isSolved = cubies => readFaceletString(cubies) === SOLVED;
 
-  // Expose the pure-model API (used by tools/verify.js in Node; harmless in the
+  // Expose the pure-model API (used by tests/cube-core-test.js in Node; harmless in the
   // browser). `const` declarations don't become properties of the global, so we
   // surface them explicitly.
   self.CubeCore = { buildCubies, applyMove, readFaceletString, isSolved, parseAlg, MOVES };
@@ -978,6 +983,9 @@
     faceTab.setAttribute('aria-expanded', String(drawerOpen));
   }
   function toggleDrawer() { drawerOpen = !drawerOpen; applyShift(true); }
+  // Close the drawer (if open), sliding the panel off the left edge. Mirrors
+  // closeControls() for the right-edge controls drawer.
+  function closeFaceDrawer() { if (drawerOpen) { drawerOpen = false; applyShift(true); } }
   // A click is enough to toggle: a tap on a real <button> in Safari fires a
   // click, so this works on iPad with no keyboard.  (Only the face buttons
   // themselves need pointerup.)
@@ -1000,8 +1008,9 @@
   if (document.readyState === 'complete') requestAnimationFrame(armDrawer);
   else addEventListener('load', armDrawer);
   // A couple of extra rAFs catch the moment the CDN CSS finishes injecting styles
-  // even on very fast, already-cached loads.
-  requestAnimationFrame(() => requestAnimationFrame(() => applyShift(false)));
+  // even on very fast, already-cached loads, then pick the startup open/closed
+  // state of BOTH drawers at once (see decideStartupDrawers, defined below).
+  requestAnimationFrame(() => requestAnimationFrame(decideStartupDrawers));
 
   // --- Controls drawer (right edge) ---
   // Mirror of the layer drawer: the panel hides off the right edge behind a
@@ -1038,14 +1047,15 @@
   function toggleControls() { controlsOpen = !controlsOpen; applyControlsShift(true); }
   // Close the drawer (if open), sliding the panel off the right edge.
   function closeControls() { if (controlsOpen) { controlsOpen = false; applyControlsShift(true); } }
-  // True when the open controls drawer — the WHOLE panel including its tab, read
-  // from its own bounding box — geometrically overlaps the cube's on-screen area.
-  // The cube's world-space AABB is projected to screen pixels through the camera;
-  // the drawer's rect is its getBoundingClientRect(). Used to decide whether a
-  // Scramble/Solve (which animate the cube) should first slide the drawer away so
-  // the animation stays visible.
-  function controlsPanelOverlapsCube() {
-    const d = controlsDrawer.getBoundingClientRect();
+  // True when an open drawer — the WHOLE panel including its tab, read from its
+  // own bounding box — geometrically overlaps the cube's on-screen area.  The
+  // cube's world-space AABB is projected to screen pixels through the camera; the
+  // drawer's rect is its getBoundingClientRect().  Used both to decide whether a
+  // Scramble/Solve (which animate the cube) should first slide the controls drawer
+  // away so the animation stays visible, and to pick the STARTUP open/closed state
+  // of both drawers (see decideStartupDrawers).
+  function drawerOverlapsCube(drawerEl) {
+    const d = drawerEl.getBoundingClientRect();
     if (d.width === 0 || d.height === 0) return false;
     const drawer = { l: d.left, r: d.right, t: d.top, b: d.bottom };
     const box = new THREE.Box3().setFromObject(cubeGroup);
@@ -1069,6 +1079,32 @@
     // Standard axis-aligned rectangle intersection test.
     return !(r < drawer.l || l > drawer.r || b < drawer.t || t > drawer.b);
   }
+  // Back-compat: the controls-drawer auto-close-on-overlap used this name.
+  function controlsPanelOverlapsCube() { return drawerOverlapsCube(controlsDrawer); }
+  // --- Startup drawer state -------------------------------------------------
+  // On a wide-enough screen, open BOTH drawers so the layer buttons (left edge)
+  // and the controls panel (right edge) are visible at once, with the cube in
+  // the gap between them.  On a narrow screen the two panels would land on top
+  // of the cube, so they start closed and only their binder tabs peek out.
+  // Each drawer is opened INDEPENDENTLY, iff its open-position rect clears the
+  // cube's projected on-screen area — the very same test that auto-closes the
+  // controls drawer before a Scramble/Solve animation.  The camera's view
+  // matrix is only finalised by a render, and this first arming tick can run
+  // before frame one, so refresh the matrix before measuring.
+  function decideStartupDrawers() {
+    camera.updateMatrixWorld(true);
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+    // Tentatively open both so each panel's rect reflects its open position.
+    drawerOpen = true;
+    controlsOpen = true;
+    applyShift(false);
+    applyControlsShift(false);
+    // Close whichever drawer would cover the cube; leave the rest open.
+    drawerOpen = !drawerOverlapsCube(faceDrawer);
+    controlsOpen = !drawerOverlapsCube(controlsDrawer);
+    applyShift(false);
+    applyControlsShift(false);
+  }
   // A click is enough to toggle, so a tap in Safari works with no keyboard.
   controlsTab.onclick = toggleControls;
   function armControlsDrawer() {
@@ -1081,16 +1117,18 @@
   }
   if (document.readyState === 'complete') requestAnimationFrame(armControlsDrawer);
   else addEventListener('load', armControlsDrawer);
-  requestAnimationFrame(() => requestAnimationFrame(() => applyControlsShift(false)));
+  // Startup open/closed state is decided once for BOTH drawers by
+  // decideStartupDrawers(), wired up by the face drawer's double-rAF above.
 
   // --- Primary buttons ---
-  // Scramble and Solve animate the cube, so first make room: when the controls
-  // drawer is open and its panel (with tab) would sit on top of the cube, slide
-  // it away so the animation stays visible. Non-overlapping (e.g. wide screens)
-  // is left open.
+  // Scramble and Solve animate the cube, so first make room: when a drawer is
+  // open and its panel (with tab) would sit on top of the cube, slide it away so
+  // the animation stays visible. Non-overlapping (e.g. wide screens) is left
+  // open. Each drawer is checked independently with drawerOverlapsCube().
   const closeControlsOverCube = () => { if (controlsOpen && controlsPanelOverlapsCube()) closeControls(); };
-  document.getElementById('btn-scramble').onclick = () => { closeControlsOverCube(); scramble(); };
-  document.getElementById('btn-solve').onclick = () => { closeControlsOverCube(); solve(); };
+  const closeFaceDrawerOverCube = () => { if (drawerOpen && drawerOverlapsCube(faceDrawer)) closeFaceDrawer(); };
+  document.getElementById('btn-scramble').onclick = () => { closeControlsOverCube(); closeFaceDrawerOverCube(); scramble(); };
+  document.getElementById('btn-solve').onclick = () => { closeControlsOverCube(); closeFaceDrawerOverCube(); solve(); };
   document.getElementById('btn-reset').onclick = resetCube;
   document.getElementById('btn-stepfwd').onclick = stepForward;
   document.getElementById('btn-stepbwd').onclick = stepBackward;
@@ -1296,28 +1334,6 @@
     get busy() { return state.busy; },
     get status() { return state.status; },
     get cubies() { return cubies; },
-    // Drive one move (no animation) — used for instant screenshots.
-    applyInstant: (face, power) => {
-      applyMove(cubies, face, power);
-      for (const p of parts) { p.mesh.position.set(p.data.pos[0], p.data.pos[1], p.data.pos[2]); p.mesh.quaternion.copy(bodyQuat(p.data)); }
-      recordMove(face + (power === 1 ? '2' : (power === 2 ? "'" : '')));
-      // No animation here, so finishMove won't run — advance the cursor to keep
-      // it aligned with the cube's physical state and refresh the counters.
-      state.cursor = state.moves.length;
-      updateCounters();
-      updateIdleStatus();
-    },
-    applyAlg: function (alg) {
-      // Iterate in a plain function so `this` stays bound even when callers
-      // detach the method (e.g. page.evaluate((a) => hook.applyAlg(a)) from the
-      // screenshot harness). Keeps the harness simple.
-      for (const { face, power } of parseAlg(alg)) this.applyInstant(face, power);
-    },
-    solveToSolved: async function (alg) {
-      this.applyAlg(alg);
-      if (!solverReady) await waitForSolver();
-      return solve();
-    },
     setCamera: () => { controls.setView(HOME_POS); controls.spherical.theta = controls.thetaTarget; controls.spherical.phi = controls.phiTarget; controls.spherical.radius = controls.radiusTarget; },
 
     // Freeze the animation loop, render a frame, and return it as raw RGBA

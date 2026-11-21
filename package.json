@@ -6,7 +6,7 @@
   "scripts": {
     "verify": "node tests/cube-core-test.js",
     "verify:cursor": "node tests/cursor-test.js",
-    "test:drawer": "node tests/controls-drawer-test.js",
+    "test:drawer": "node tests/drawers-test.js",
     "screenshot": "node tools/render-screenshot.js"
   },
   "devDependencies": {
