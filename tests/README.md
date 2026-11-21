@@ -21,7 +21,7 @@ any failure), so they double as smoke tests and as CI gates.
 | `cursor-test.js` | Tests the Move-Log "cursor" model | Node, `cubejs` | `npm run verify:cursor` or `node tests/cursor-test.js` |
 | `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tests/press-test.js` |
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
-| `controls-drawer-test.js` | Controls-drawer auto-close-on-overlap tests | Node, Playwright + Chromium | `node tests/controls-drawer-test.js` |
+| `drawers-test.js` | Both-drawer (controls + face) auto-close-on-overlap tests | Node, Playwright + Chromium | `node tests/drawers-test.js` |
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ these, since they are dev-only.
 - `cube-core-test.js` and `cursor-test.js` need **`cubejs`** (a devDependency,
   used only by the tooling — the app itself loads cubejs from a CDN). They run
   the cube-core math in a fresh Node VM context, so they need no browser.
-- `press-test.js`, `click-test.js`, and `controls-drawer-test.js` need
+- `press-test.js`, `click-test.js`, and `drawers-test.js` need
   **Playwright** and a headless Chromium. They drive the real `index.html` via
   the `window.__RUBIKS__` test hook.
 
@@ -108,18 +108,22 @@ left-edge controls):
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.
 
-## controls-drawer-test.js
+## drawers-test.js
 
-Playwright-driven tests for the right-edge **Controls drawer auto-close on
-overlap**. When the drawer is open and its panel (including the tab, read from
-the drawer's own bounding box) overlaps the cube's on-screen area, clicking
-**Scramble** or **Solve** slides the drawer closed first so the cube animation
-stays visible; on a non-overlapping layout it is left open. Each scenario opens
-the drawer via its tab, clicks the action button, and reads the tab's
-`aria-expanded` to confirm the result:
+Playwright-driven tests for **BOTH slide-out drawers' auto-close on overlap**
+(the right-edge Controls drawer and the left-edge face-button drawer). When a
+drawer is open and its panel (including the tab, read from the drawer's own
+bounding box) overlaps the cube's on-screen area, clicking **Scramble** or
+**Solve** slides that drawer closed first so the cube animation stays visible;
+on a non-overlapping layout it is left open. The Scramble/Solve handlers run
+both auto-close helpers, so a single click clears every open drawer that would
+cover the cube. Each scenario also checks the width-dependent **startup** state
+of both drawers (narrow → closed, wide → open), opens whichever started closed,
+clicks the action button, and reads each tab's `aria-expanded` to confirm the
+result:
 
-- narrow viewport (drawer covers the cube): Scramble and Solve **auto-close** it.
-- wide viewport (drawer clear of the cube): Scramble and Solve **leave it open**.
+- narrow viewport (drawers cover the cube): Scramble and Solve **auto-close** both.
+- wide viewport (drawers clear of the cube): Scramble and Solve **leave both open**.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.

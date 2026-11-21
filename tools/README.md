@@ -10,7 +10,7 @@ are developer tooling. The test scripts live in `../tests/` (see
 | `render-screenshot.js` | Captures the project screenshots | Node, Playwright + Chromium, ImageMagick | `npm run screenshot` or `node tools/render-screenshot.js` |
 
 The test scripts (`cube-core-test.js`, `cursor-test.js`, `press-test.js`,
-`click-test.js`, `controls-drawer-test.js`) are in `../tests/`.
+`click-test.js`, `drawers-test.js`) are in `../tests/`.
 
 ## Prerequisites
 

@@ -65,9 +65,9 @@ const stateFor = (wrap, f) => (page) =>
   const drawerOpen = () => page.evaluate(
     () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
 
-  // The Controls drawer (right edge, holds the Reset button) is hidden behind its
-  // tab by default, so open it before clicking in. Idempotent: toggles only if
-  // currently closed.
+  // The Controls drawer (right edge, holds the Reset button) is already open on
+  // this wide viewport, but open it before clicking in anyway. Idempotent:
+  // toggles only if currently closed.
   const controlsOpen = () => page.evaluate(
     () => document.getElementById('controls-drawer-tab').getAttribute('aria-expanded'));
   const openControlsDrawer = async () => {
@@ -79,19 +79,18 @@ const stateFor = (wrap, f) => (page) =>
 
   // ---- 1) The drawer toggles via the tab (a real click/tap). ---------------
   //    Runs first: if the toggle is broken, the button tests below are moot.
-  //    Starts hidden; tapping the tab slides it out; tapping again slides it
-  //    back. We leave it OPEN for the button-interaction tests, because the
-  //    buttons sit off-screen while the drawer is closed.
-  check('drawer starts closed', await drawerOpen() === 'false', await drawerOpen());
+  //    On this wide (1440px) viewport the layer drawer STARTS OPEN (the screen
+  //    fits the drawer + the cube + the controls drawer), so tap the tab to
+  //    slide it back, then tap again to slide it out. We leave it OPEN for the
+  //    button-interaction tests, because the buttons sit off-screen while the
+  //    drawer is closed.
+  check('drawer starts open (wide viewport)', await drawerOpen() === 'true', await drawerOpen());
   await page.click('#face-drawer-tab');
   await page.waitForTimeout(400);                 // let the .3s slide settle
-  check('tab click opens drawer', await drawerOpen() === 'true', await drawerOpen());
-  await page.click('#face-drawer-tab');
-  await page.waitForTimeout(400);
   check('tab click closes drawer', await drawerOpen() === 'false', await drawerOpen());
   await page.click('#face-drawer-tab');
   await page.waitForTimeout(400);
-  check('drawer opened for button tests', await drawerOpen() === 'true', await drawerOpen());
+  check('tab click re-opens drawer', await drawerOpen() === 'true', await drawerOpen());
 
   // ---- 2) Plain press: U depressed, label stays 'U', restores on release. ---
   let p = await center('face-buttons', 'U');
