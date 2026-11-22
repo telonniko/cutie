@@ -20,12 +20,14 @@ client-side with no external backend, and every library is loaded from a CDN.
 ## 2. Visuals & Rendering
 
 ### Scene & camera
-- Dark scene background (slate-950 range). Renderer uses `alpha: true` and
-  `preserveDrawingBuffer: true` so the cube can be composited over the DOM in
-  screenshots.
-- `PerspectiveCamera` at a 3/4 view (home position roughly `(6.5, 5.5, 8.5)`).
-- Physically-based lighting (post-r155): ambient + a key directional light with
-  shadows + a cool fill light. A soft ground plane catches a drop shadow.
+- Dark scene background (`0x0f172a`, matching the slate-950 page color). Renderer
+  uses `alpha: true` and `preserveDrawingBuffer: true` so the cube can be
+  composited over the DOM in screenshots.
+- `PerspectiveCamera` with 38° FOV at a 3/4 view (home position `(6.5, 5.5, 8.5)`).
+- Physically-based lighting (post-r155): ambient (`2.8`) + a key directional light
+  (`3.3`) with PCFSoft shadow map (1024×1024) + a cool fill light
+  (`0x88aaff`, `1.1`). A soft ground plane (`ShadowMaterial`, opacity `0.28`) at
+  `y = -3.4` catches a drop shadow.
 - Since three.js r155, light intensities are ~π× the old "legacy" values.
 
 ### Cubies
@@ -40,13 +42,17 @@ client-side with no external backend, and every library is loaded from a CDN.
   90°-aligned with no floating-point drift.
 
 ### Orbit controls
-- **Custom minimal orbit controls** (no external `OrbitControls`): drag to orbit
-  (damped), scroll/pinch to zoom, touch support. Cursor: `grab`/`grabbing`.
+- **Custom minimal `Orbit` class** (no external `OrbitControls`): drag to orbit
+  (damped), mouse-wheel zoom, and **two-finger touch pinch zoom**. Cursor: `grab`/`grabbing`.
+  Clamp range: polar angle `0.15–π-0.15`, radius `6–22`.
 
 ### Animation
-- Smooth 3D slice rotation with `easeInOut` easing. Half-turns (`'2'`) take
-  slightly longer than quarter-turns. Scramble plays at normal pace; solve at a
-  slightly slower pace. A speed slider (0.3×–3×) scales all durations.
+- Smooth 3D slice rotation with a piecewise `easeInOut` easing
+  (`2t²` for `t<0.5`, `1 - (-2t+2)²/2` otherwise). Per-move duration is computed from
+  constants: `TURN_SECONDS = 0.42` at 1× speed, `DOUBLE_PENALTY = 1.15` multiplier
+  for half-turns, and a `PACE` object (`scramble: 1`, `turn: 1`, `solve: 1.15`) that
+  plays solves ~15% slower than scrambles. A speed slider (0.3×–3×, step 0.1, default
+  1.0) scales all durations.
 
 ---
 
@@ -207,8 +213,11 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   quarter, half). No top label — the tab *is* the "Turn a layer" label.
 
 ### Misc
-- **Drag-to-rotate hint**: a small pill, centered horizontally near the top, "Drag
-  to orbit · Scroll/Pinch to zoom"; it fades out on the first interaction.
+- **Drag-to-rotate hint**: a small pill, centered horizontally near the top
+  (`top-17`), "Drag to orbit · Scroll/Pinch to zoom"; it fades out on the **first keypress
+  or pointerdown** (via a capture-phase `document` listener that fires before the app's
+  handlers), then removes itself from the DOM. Respects
+  `prefers-reduced-motion: reduce` — skips the fade animation and removes immediately.
 - **Attribution (credit card)**: a small bottom-left line, "created with
   qwen3.8:27b-mlx-4bit"; it stays visible at all times and is NOT an onboarding
   hint (not dismissed on first interaction).
@@ -248,12 +257,21 @@ fields are ignored, and repeat events are ignored for face turns.
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
 capture. It is a **capture/sync bridge, not a state driver** — it no longer
 applies moves, so the captures reflect what the app actually does. It provides:
-`ready` / `status` getters, `setCamera`, `renderFrame` for capturing the GL back
-buffer as raw RGBA pixels (bypassing the unreliable 2D-canvas sync in headless
-Chromium), `setPixelRatio`, `syncLog` to render the Move Log grid instantly,
-`isSolved`, and `waitUntilIdle`. State changes in tests and the screenshot
-harness go through the real UI (clicking the Scramble/Solve buttons) — so the
-captures always reflect the app's current behavior.
+
+- `ready` / `status` (getters — tracks solver readiness and current status text)
+- `setCamera()` — resets camera to the home position (`HOME_POS`)
+- `renderFrame()` — renders one frame with a transparent background and returns raw
+  RGBA pixels via `gl.readPixels()` (bypasses the unreliable 2D-canvas sync in
+  headless Chromium)
+- `setPixelRatio(pr)` — forces the renderer's pixel ratio and rescales the canvas
+- `syncLog()` — renders the Move Log grid with every move shown as "done" (for
+  screenshot clarity)
+- `isSolved()` — checks if the cube is in solved state
+- `waitUntilIdle(maxMs?)` — resolves when animations have finished
+
+State changes in tests and the screenshot harness go through the real UI (clicking
+the Scramble/Solve buttons) — so the captures always reflect the app's current
+behavior.
 
 ### `tests/cube-core-test.js`
 Node unit tests that extract the cube core (between the sentinels), evaluate it
@@ -264,18 +282,20 @@ Run: `node tests/cube-core-test.js` (`npm run verify`).
 ### `tests/cursor-test.js`
 Node regression test for the **cursor model** (the move-log step/branch logic).
 It mirrors the app's cursor behavior against the cube core + cubejs and proves:
-scramble → step back 3 → **solve** still ends solved; a hand turn branches the
-log at the cursor; Solve clears the log (log length == solution length); stepping
-back to 0 makes the cube solved again; and step-back-then-step-forward reproduces
-a move. Run: `node tests/cursor-test.js` (`npm run verify:cursor`).
+the cursor moves correctly (cube reflects `moves[0..cursor-1]`); a face-turn
+branches from the cursor (discards future moves, appends the new one); and **Solve
+always solves the cube** regardless of cursor position, discarding any future
+moves and appending the solution. Run: `node tests/cursor-test.js`
+(`npm run verify:cursor`).
 
 ### `tests/drawers-test.js`
-Playwright tests for the two slide-out drawers' auto-close-on-overlap and
-width-dependent startup. For each drawer, a narrow viewport starts it **closed**
-(the panel would cover the cube) while a wide one starts it **open**; the test
-clicks **Scramble**/**Solve** and reads each tab's `aria-expanded` to confirm the
-drawer auto-closes when it would cover the cube and stays open when it doesn't.
-Run: `node tests/drawers-test.js` (`npm run test:drawer`).
+Playwright tests for **both** slide-out drawers' auto-close-on-overlap and
+width-dependent startup. Each drawer is checked **independently**: a narrow
+viewport starts it **closed** (the panel would cover the cube) while a wide one
+starts it **open**; the test clicks **Scramble**/**Solve** and reads each tab's
+`aria-expanded` to confirm the drawer auto-closes when it would cover the cube and
+stays open when it doesn't. Run: `node tests/drawers-test.js`
+(`npm run test:drawer`).
 
 ### `tests/press-test.js`
 Keyboard-shortcut tests:
@@ -299,11 +319,11 @@ Playwright tests for face-button mouse/click behavior:
 ### `tests/step-buttons-test.js`
 Playwright tests for the **"← Step" / "Step →" enable/disable** state. The
 buttons disable when the Move Log has no move in that direction to apply —
-`← Step` while the cursor is at 0, `Step →` while the cursor is at the end of
-the log — and re-enable as the cursor moves. It also proves a **Scramble/Solve
-never flickers the buttons mid-sequence**: the flags are read during the batch
-(unchanged) and after it drains (`settle` refreshes them once). Checks, in
-order:
+`← Step` while the cursor is at 0 (nothing applied to undo), `Step →` while the
+cursor is at the end of the log (nothing future to replay) — and re-enable as
+the cursor moves. It also proves a **Scramble/Solve does not flicker the buttons
+mid-sequence**: the flags are read during the batch (unchanged) and after it
+drains (`settle` refreshes them once). Checks, in order:
 - Fresh log / after Reset: **both** buttons disabled.
 - After one applied move: `← Step` enabled, `Step →` disabled.
 - Stepped back to the start: `← Step` disabled, `Step →` enabled; stepped to the
@@ -318,11 +338,17 @@ order:
 
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
-screenshots — solved, scrambled, solved-after — each with **both drawers open**
-and the cube in the gap between them. It drives the **real Scramble and Solve
-buttons** (so the shots reflect the current randomized scramble and solver),
-waiting for each animation to finish, then composites the GL frame (transparent
-background) over the DOM UI. Outputs to `docs/screenshots/`.
+screenshots — `solved.png`, `scrambled.png`, `solved-after.png` — each with **both
+drawers open** and the cube in the gap between them. It drives the **real Scramble
+and Solve buttons** (so the shots reflect the current randomized scramble and
+solver), waiting for each animation to finish via `waitUntilIdle`. The harness:
+
+1. Calls `window.__RUBIKS__.renderFrame()` → raw RGBA pixels from the GL back buffer.
+2. Calls `page.screenshot()` → the full DOM UI.
+3. Composites the cube PNG over the UI screenshot at the canvas origin via ImageMagick.
+
+Requires: Node, Playwright + Chromium, and **ImageMagick** (`magick` / `convert`).
+Outputs to `docs/screenshots/`.
 Run: `node tools/render-screenshot.js` (`npm run screenshot`).
 
 ---
@@ -366,14 +392,40 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   iPad, no keyboard) or the `T` (face) / `C` (controls) key.
 - **Drawer first-load race**: Tailwind v4's browser build loads via the runtime
   **Play CDN `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
-  module first runs. Measuring the closed shift that early is too small and
-  leaves the panel peeking. The shift is therefore kept at a fully-hidden CSS
-  default until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable
-  width; auto re-measurements snap (no slide), so the panel never visibly slides
-  or peeks on first load.
+  module first runs. Measuring the closed shift that early is too small and leaves
+  the panel peeking. The shift is therefore kept at a fully-hidden CSS default
+  until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable width; auto
+  re-measurements snap (no slide), so the panel never visibly slides or peeks on
+  first load.
+- **Drawers auto-close independently**: on a wide screen, **both** drawers open at
+  startup. On a narrow screen, both stay closed. When a Scramble or Solve is
+  triggered, each drawer is checked independently via `drawerOverlapsCube()`; only
+  the ones that would cover the cube are auto-closed. The `decideStartupDrawers()`
+  function tentatively opens both, tests each, and closes whichever overlaps.
 - **Batch animation**: scramble and solve clear the log, then enqueue the entire
-  sequence up front (so the Move Log shows all buttons at once), then auto-advance.
-  Step mode plays one move and stops.
+  sequence up front (so the Move Log shows all buttons at once), then auto-advance
+  via `startCurrent()` → `finishMove()` → `startCurrent()` … until the queue drains.
+  Step mode plays one move and stops (auto=false).
+- **Per-move duration constants**: `TURN_SECONDS = 0.42`, `DOUBLE_PENALTY = 1.15`
+  (half-turns take ~15% longer), `PACE = { scramble: 1, turn: 1, solve: 1.15 }`
+  (solves play slightly slower than scrambles). Speed slider scales all durations.
+- **Touch pinch-zoom**: the `Orbit` class handles two-finger pinch zoom in addition
+  to mouse-wheel zoom. Single-finger touch orbit is also supported.
+- **Drawer overlap detection**: `drawerOverlapsCube(drawerEl)` projects the cube's
+  world-space AABB through the camera to screen pixels, then performs an axis-aligned
+  rectangle intersection test against the drawer's `getBoundingClientRect()`. Both
+  drawers are checked independently; `decideStartupDrawers()` uses this to pick the
+  startup open/closed state of each drawer independently.
+- **Render loop**: `requestAnimationFrame` loop with `paused` flag (set during
+  screenshot capture). dt capped at 50ms to prevent spiral-of-death.
+- **`window.__RUBIKS__` hook**: `setCamera()` resets to home position; `setPixelRatio(pr)`
+  forces the renderer's pixel ratio; `renderFrame()` renders with a transparent
+  background; `syncLog()` forces all log moves to "done" state; `waitUntilIdle()`
+  waits for animations to finish.
+- **Hint dismissal**: a capture-phase `document` listener dismisses the drag-to-orbit
+  hint on the first `keydown` or `pointerdown` event (any element). If
+  `prefers-reduced-motion: reduce` is active, it removes immediately without the
+  fade animation.
 - **Step-button enable/disable**: `updateStepButtons()` mirrors the cursor into the
   two step buttons — `← Step` disabled at cursor 0, `Step →` disabled at the end of
   the log. It runs **only at rest** (initial load, after Reset, and when a batch or
