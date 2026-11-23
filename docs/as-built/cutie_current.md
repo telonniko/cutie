@@ -267,6 +267,12 @@ fields are ignored, and repeat events are ignored for face turns.
 
 ## 7. Testing
 
+Test scripts write any scratch artifacts (e.g. `click-test.js`'s pressed-state
+screenshot) to the git-ignored project-root `tmp/` directory, creating it on
+demand. Nothing is written at the repo root — one-off verification screenshots
+live under `tmp/screenshots/`. The only tracked screenshots are the official
+harness's three outputs in `docs/screenshots/` (see below).
+
 ### `window.__RUBIKS__` hook
 The app exposes a `window.__RUBIKS__` hook for headless testing and screenshot
 capture. It is a **capture/sync bridge, not a state driver** — it no longer
