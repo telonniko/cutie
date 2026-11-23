@@ -21,7 +21,7 @@ any failure), so they double as smoke tests and as CI gates.
 | `cursor-test.js` | Tests the Move-Log "cursor" model | Node, `cubejs` | `npm run verify:cursor` or `node tests/cursor-test.js` |
 | `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tests/press-test.js` |
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
-| `drawers-test.js` | Both-drawer (controls + face) auto-close-on-overlap tests | Node, Playwright + Chromium | `node tests/drawers-test.js` |
+| `drawers-test.js` | Face-drawer auto-close-on-overlap tests (startup state + Scramble/Solve) | Node, Playwright + Chromium | `node tests/drawers-test.js` |
 | `step-buttons-test.js` | "← Step" / "Step →" enable/disable tracking with the cursor | Node, Playwright + Chromium | `npm run test:step` or `node tests/step-buttons-test.js` |
 
 ## Prerequisites
@@ -102,8 +102,9 @@ left-edge controls):
   deferral, no double-click detection); a half-turn button turns 180°.
 - The panel hides behind a tab; clicking the tab slides it open and closed
   (works on iPad with no keyboard).
-- The `#btn-reset` button lives in the (default-hidden) right-edge Controls
-  drawer, so the test opens that drawer before clicking it.
+- The `#btn-reset` button lives in the left-edge face-button drawer, so the
+  test opens that drawer before clicking it (a no-op at the test viewport,
+  where it starts open).
 - The pressed-state screenshot is written to the git-ignored `tmp/` directory.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
@@ -111,20 +112,20 @@ test hook.
 
 ## drawers-test.js
 
-Playwright-driven tests for **BOTH slide-out drawers' auto-close on overlap**
-(the right-edge Controls drawer and the left-edge face-button drawer). When a
-drawer is open and its panel (including the tab, read from the drawer's own
-bounding box) overlaps the cube's on-screen area, clicking **Scramble** or
-**Solve** slides that drawer closed first so the cube animation stays visible;
-on a non-overlapping layout it is left open. The Scramble/Solve handlers run
-both auto-close helpers, so a single click clears every open drawer that would
-cover the cube. Each scenario also checks the width-dependent **startup** state
-of both drawers (narrow → closed, wide → open), opens whichever started closed,
-clicks the action button, and reads each tab's `aria-expanded` to confirm the
-result:
+Playwright-driven tests for **the slide-out face-button drawer's auto-close on
+overlap** (left edge). When the drawer is open and its panel (including the tab,
+read from the drawer's own bounding box) overlaps the cube's on-screen area,
+clicking **Scramble** or **Solve** slides that drawer closed first so the cube
+animation stays visible; on a non-overlapping layout it is left open. Each
+scenario also checks the width-dependent **startup** state of the drawer (narrow
+→ closed, wide → open), opens it if it started closed, clicks the action
+button, and reads the tab's `aria-expanded` to confirm the result:
 
-- narrow viewport (drawers cover the cube): Scramble and Solve **auto-close** both.
-- wide viewport (drawers clear of the cube): Scramble and Solve **leave both open**.
+- narrow viewport (drawer covers the cube): Scramble and Solve **auto-close** it.
+- wide viewport (drawer clear of the cube): Scramble and Solve **leave it open**.
+
+The bottom Move Log panel is always visible — it has no drawer state and is not
+part of these tests.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.
@@ -149,7 +150,7 @@ once when it drains. Checks, in order:
   disables again; Reset re-disables both.
 
 The disabled flags are read straight from the buttons' `disabled` DOM property
-(works whether or not the Controls drawer is open), and the test runs at 3× speed
+(works whether or not the face drawer is open), and the test runs at 3× speed
 so the random 18–35 move scramble drains within its wait timeout.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
@@ -162,7 +163,7 @@ capture: it is a **capture/sync bridge, not a state driver** — it no longer
 applies moves, so the captures reflect what the app actually does. It provides
 `ready` / `status` getters, `setCamera`, `renderFrame` (raw RGBA pixels from the
 GL back buffer, bypassing the unreliable 2D-canvas sync in headless Chromium),
-`setPixelRatio`, `syncLog` to render the Move Log grid instantly, `isSolved`, and
+`setPixelRatio`, `syncLog` to render the Move Log instantly, `isSolved`, and
 `waitUntilIdle`. State changes go through the real UI (clicking the
 Scramble/Solve buttons), so tests reflect the app's current behavior. The
 Playwright tests above rely on it.

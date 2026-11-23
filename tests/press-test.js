@@ -36,20 +36,14 @@ function findExecutable() {
   // The drawer's open/closed state, read from the tab's aria-expanded attribute.
   const drawerOpen = () => page.evaluate(
     () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
-  // The Controls drawer (right edge, holds the Reset button) is already open on
-  // this wide viewport, but open it before clicking in anyway. Idempotent:
-  // toggles only if currently closed.
-  const controlsOpen = () => page.evaluate(
-    () => document.getElementById('controls-drawer-tab').getAttribute('aria-expanded'));
-  const openControlsDrawer = async () => {
-    if ((await controlsOpen()) !== 'true') {
-      await page.click('#controls-drawer-tab');
-      await page.waitForTimeout(400); // let the .3s slide settle
-    }
-  };
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
   async function resetIdle() {
-    await openControlsDrawer(); // #btn-reset lives in the (default-hidden) Controls drawer
+    // #btn-reset lives in the face-button drawer: open it first (already open on
+    // this wide viewport — idempotent, toggles only if currently closed).
+    if ((await drawerOpen()) !== 'true') {
+      await page.click('#face-drawer-tab');
+      await page.waitForTimeout(400); // let the .3s slide settle
+    }
     await page.click('#btn-reset');
     await page.waitForTimeout(400);
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
