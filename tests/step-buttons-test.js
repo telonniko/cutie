@@ -12,7 +12,7 @@
  *   - Reset re-disables both.
  *
  * The disabled state is read straight from the button's `disabled` DOM property
- * (via page.evaluate) so it works whether or not the Controls drawer is open.
+ * (via page.evaluate) so it works whether or not the face drawer is open.
  *
  * Run:  node tests/step-buttons-test.js
  */
@@ -39,8 +39,8 @@ function findExecutable() {
   const exe = findExecutable();
   if (exe) launchOpts.executablePath = exe;
   const browser = await chromium.launch(launchOpts);
-  // Wide viewport: BOTH drawers start open, so the step buttons and face buttons
-  // are on screen and clickable.
+  // Wide viewport: the face drawer starts open, so the step buttons and face
+  // buttons are on screen and clickable.
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'load' });
   await page.waitForFunction(() => window.__RUBIKS__ && window.__RUBIKS__.ready === true, { timeout: 120000 });
@@ -52,8 +52,8 @@ function findExecutable() {
   }));
   const bothDisabled = async () => { const s = await stepState(); return s.bwd && s.fwd; };
 
-  // Idempotent drawer openers (the drawers start open on a wide viewport, but a
-  // Scramble/Solve may have auto-closed one, so open it back if needed).
+  // Idempotent drawer opener (the face drawer starts open on a wide viewport,
+  // but a Scramble/Solve may have auto-closed it, so open it back if needed).
   const drawerOpen = (id) => page.evaluate(
     (i) => document.getElementById(i).getAttribute('aria-expanded'), id);
   const openDrawer = async (id) => {
@@ -62,7 +62,6 @@ function findExecutable() {
       await page.waitForTimeout(400); // let the .3s slide settle
     }
   };
-  const openControlsDrawer = () => openDrawer('controls-drawer-tab');
   const openFaceDrawer = () => openDrawer('face-drawer-tab');
 
   const quarterU = page.locator('#face-buttons button[data-face="U"]');
@@ -82,7 +81,7 @@ function findExecutable() {
 
   // Reset to a known solved / empty-log state (both step buttons end disabled).
   async function resetIdle() {
-    await openControlsDrawer();
+    await openFaceDrawer();
     await page.click('#btn-reset');
     await page.waitForTimeout(400);
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
@@ -116,7 +115,7 @@ function findExecutable() {
   check('after one move: back enabled, forward disabled', s1.bwd === false && s1.fwd === true, JSON.stringify(s1));
 
   // ---- 3) Step back to the start: "← Step" disables, "Step →" enables. ------
-  await openControlsDrawer();
+  await openFaceDrawer();
   await clickStep(stepBwd);                 // cursor 1 -> 0
   const s2 = await stepState();
   check('stepped back to start: back disabled, forward enabled', s2.bwd === true && s2.fwd === false, JSON.stringify(s2));
@@ -131,7 +130,7 @@ function findExecutable() {
   //    refresh here) and animates the whole batch; the buttons must stay in their
   //    pre-scramble state until the batch drains, then refresh once in settle().
   await resetIdle();
-  await openControlsDrawer();
+  await openFaceDrawer();
   await page.click('#btn-scramble');
   // Read WHILE the scramble is still animating: the flags must be untouched
   // (both still disabled), i.e. NOT toggled on every move as the cursor advances.
@@ -144,7 +143,7 @@ function findExecutable() {
   // ---- 6) In the middle of a long log: BOTH buttons are enabled. ------------
   //    Scramble the cube (cursor at the end), then step back a couple: the
   //    cursor now sits in the middle, so there are moves both behind and ahead.
-  await openControlsDrawer();
+  await openFaceDrawer();
   await clickStep(stepBwd);
   await clickStep(stepBwd);
   const sMidLog = await stepState();

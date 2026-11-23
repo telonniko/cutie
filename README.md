@@ -67,31 +67,32 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   (**Solved**, **Scrambled**, **Turning…**, **Solving…**) and a live **Moves**
   counter.
 
-### Controls drawer (right edge) — a slide-out drawer
-The Move Log lives in a panel that **hides behind a tab** on the right edge —
-the mirror of the face-button drawer on the left. On a wide screen the app opens
-**both** drawers at startup (cube in the gap between them); on a narrow one they
-start closed, and either drawer auto-closes when a Scramble/Solve would slide it
-onto the cube. The tab is a vertical **"Controls"** handle on the panel's left
-edge; **`C`** toggles it from the keyboard (Tab drives focus navigation, so
-it's not used here).
-- **Move Log** — the executed moves shown as a **grid of move-buttons, 5 per
-  row** (each button is one token like `R`, `U'`, `F2`), styled to match the
-  face buttons. As a scramble or solve animates, the button for the move being
-  turned **highlights first, then the face turns, then the next one** — moves
-  before the current step show as done, moves after it as pending. A count of
-  total moves is shown at
-  the top of the card, and the panel **scrolls** when the grid is taller than the
-  panel.
+### Move Log (bottom edge) — an always-visible panel
+The Move Log is a panel **fixed at the bottom of the screen, always visible** —
+no drawer, no tab, no toggle, no keyboard shortcut. The wrapper spans the full
+bottom edge and centers a glassy card (backdrop blur over the canvas); the card
+hugs its content and the canvas/cube are untouched:
+- **Header** — "Move Log" title plus a live **move-count** (e.g. `12 moves`).
+- **Move buttons** — the executed moves shown as a **row of move-buttons that
+  wraps**, one per token (`R`, `U'`, `F2`, …), styled to match the face buttons.
+  Each button is a **fixed 40px wide**, so the layout is identical at every
+  screen size: **up to 12 per row**, wrapping to additional rows as moves are
+  added, centered. On narrow screens fewer than 12 fit per row and it simply
+  wraps — no horizontal overflow.
+- **Scroll** — the card grows with rows but caps at ~45% of the viewport height,
+  then scrolls internally; the button for the move being turned
+  **highlights first, then the face turns, then the next one** — moves before
+  the current step show as done, moves after it as pending — and the current
+  button auto-scrolls into view.
 
   (The speed slider and the primary-action buttons live in the face-button
   drawer on the left — see below.)
 
 ### Face buttons (left edge) — a slide-out drawer
 The face buttons live in a panel that **hides behind a tab** on the left edge,
-so the cube viewport stays clear. Like the controls drawer, it **opens at
-startup on a wide screen and stays closed on a narrow one**, and auto-closes when
-a Scramble/Solve would slide it onto the cube. The tab is a vertical **"Turn a
+so the cube viewport stays clear. It **opens at startup on a wide screen and
+stays closed on a narrow one**, and auto-closes when a Scramble/Solve would
+slide it onto the cube. The tab is a vertical **"Turn a
 layer"** handle (like a tab in a binder) that sits on the panel's **right**
 edge; it is always visible, and the panel itself slides in from the left when
 opened:
@@ -159,7 +160,6 @@ half turn) still work as shortcuts.
 | `Shift` + `U D L R F B` | Turn that face counter-clockwise |
 | `Alt` + `U D L R F B` | Turn that face 180° (half turn) |
 | `T` | Toggle the face-button (layer) drawer open / closed |
-| `C` | Toggle the controls drawer open / closed |
 
 ---
 

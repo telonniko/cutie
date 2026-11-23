@@ -44,12 +44,12 @@ compositing the cube's GL frame over the DOM UI:
 3. Compose: the cube PNG is overlaid on the UI at the canvas origin via
    ImageMagick.
 
-Each frame is captured with **both drawers open** and the cube in the gap
-between them. The scrambled and solved-after frames are produced by clicking the
+Each frame is captured with **the face drawer open** and the always-visible
+**Move Log panel** at the bottom, the cube in the gap between them. The scrambled and solved-after frames are produced by clicking the
 **real Scramble and Solve buttons** and waiting for each animation to finish — so
 the captures always reflect the current app (including the randomized scramble
 length), not a hard-coded sequence. `window.__RUBIKS__` also exposes
-`syncLog` (render the Move Log grid instantly), `setCamera`, `setPixelRatio`,
+`syncLog` (render the Move Log's wrapping rows of move-buttons instantly), `setCamera`, `setPixelRatio`,
 `isSolved`, and `waitUntilIdle` for the harness.
 
 ## The `window.__RUBIKS__` test hook
@@ -59,7 +59,7 @@ capture: it is a **capture/sync bridge, not a state driver** — it no longer
 applies moves, so captures and tests reflect what the app actually does. It
 provides `ready` / `status` getters, `setCamera`, `renderFrame` (raw RGBA pixels
 from the GL back buffer, bypassing the unreliable 2D-canvas sync in headless
-Chromium), `setPixelRatio`, `syncLog` to render the Move Log grid instantly,
+Chromium), `setPixelRatio`, `syncLog` to render the Move Log's wrapping rows of move-buttons instantly,
 `isSolved`, and `waitUntilIdle`. State changes go through the real UI (clicking
 the Scramble/Solve buttons). `render-screenshot.js` and the Playwright tests in
 `../tests/` rely on it.

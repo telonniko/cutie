@@ -175,7 +175,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Animation speed slider
 - Lives in the **left face-button drawer**, between the face columns and the
-  action-button sub-panel (it moved there from the right controls drawer).
+  action-button sub-panel.
 - Range slider (0.3–3, step 0.1, default 1.0) with "Slow"/"Fast" labels.
   Displayed as e.g. `1.0×`.
 
@@ -195,28 +195,32 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 - Status values: "Solved", "Scrambled", "Turning…", "Scrambling…",
   "Solving…", "Solved (best effort)", "Already solved".
 
-### Controls drawer (right edge)
-- A **slide-out drawer** — the mirror of the face-button drawer, on the right. It
-  holds **only the Move Log** (the speed slider and the primary-action buttons
-  live in the left face-button drawer, see §4). It **opens at startup on a wide
-  screen and stays closed on a narrow one**, and it **auto-closes** (independently
-  of the other drawer) when a Scramble/Solve would slide it onto the cube.
-  Tapping its vertical "Controls" tab (or pressing `C`) toggles it.
-- **Move Log**: grid of move-buttons (5 per row), one per move token. Three
-  visual states driven by the **cursor** — **past** (index `< cursor`, faint
-  done look), **pending** (index `>= cursor`, dim), **current** (the move
-  animating right now / last applied, bright amber highlight). Scrolls when tall;
-  the current button auto-scrolls into view. Empty state shows a placeholder
-  message. The "Moves" counter shows the number of moves actually applied
-  (the cursor).
-- The Move Log section is `flex-1`, so it fills the panel's full height on its
-  own. The speed slider and primary-action sections that formerly lived here are
-described in §4 (they now live in the face-button drawer).
+### Move Log panel (bottom edge) — always visible
+- **Not a drawer**: a panel **fixed at the bottom of the viewport, always
+  visible** — no tab, no toggle, no keyboard shortcut, no startup decision. The
+  full-width bottom wrapper lets pointer events pass through everywhere except
+  the card itself, which is horizontally centered; it overlays the
+  full-viewport canvas with a backdrop blur (the cube and camera are untouched).
+- Glassy card (rounded, semi-transparent slate-900, backdrop blur, ring border)
+  that **hugs its content** (up to ~12 buttons wide).
+- **Header**: "Move Log" title + a live **move-count** (e.g. `12 moves`).
+- **Move Log**: a row of move-buttons that **wraps**, one per move token, each a
+  **fixed 40px wide** (`2.5rem`, flex `0 0 auto` — never a fluid grid
+  fraction), **up to 12 per row**, centered. The list's max width is 12 buttons
+  + 11 gaps, so on narrow screens fewer than 12 fit per row and it wraps — no
+  horizontal overflow. Three visual states driven by the **cursor** — **past**
+  (index `< cursor`, faint done look), **pending** (index `>= cursor`, dim),
+  **current** (the move animating right now / last applied, bright amber
+  highlight) — with the current button auto-scrolling into view. The card grows
+  with rows but **caps at ~45vh** and then scrolls internally (`.scroll-thin`
+  scrollbar). Empty state shows a placeholder message. The top bar's "Moves"
+  counter shows the number of moves actually applied (the cursor); the panel's
+  header count shows the total moves in the log.
 
 ### Face buttons panel (left edge)
 - A **slide-out drawer**: it **opens at startup on a wide screen and stays closed
-  on a narrow one** (the same shared rule as the controls drawer), and
-  auto-closes when a Scramble/Solve would slide it onto the cube. While closed,
+  on a narrow one**, and auto-closes when a Scramble/Solve would slide it onto
+  the cube. While closed,
   only a vertical "Turn a layer" tab is visible on the panel's right edge. Tapping
   the tab (or pressing `T`) slides the panel out; tapping again slides it back. The
   tab is the rightmost child, so hiding the panel (sliding it left) leaves the tab
@@ -253,7 +257,6 @@ described in §4 (they now live in the face-button drawer).
 | `Shift` + `U` `D` `L` `R` `F` `B` | Turn that face counter-clockwise |
 | `Alt` + `U` `D` `L` `R` `F` `B` | Turn that face 180° (half turn) |
 | `T` | Toggle the face-button (layer) drawer open / closed |
-| `C` | Toggle the controls drawer open / closed |
 
 Face-turn keys are matched via `e.code` (physical key, e.g. `KeyU`), not
 `e.key` (composed character).  On macOS `Option+U` sets `e.key` to the
@@ -284,7 +287,7 @@ applies moves, so the captures reflect what the app actually does. It provides:
   RGBA pixels via `gl.readPixels()` (bypasses the unreliable 2D-canvas sync in
   headless Chromium)
 - `setPixelRatio(pr)` — forces the renderer's pixel ratio and rescales the canvas
-- `syncLog()` — renders the Move Log grid with every move shown as "done" (for
+- `syncLog()` — renders the Move Log with every move shown as "done" (for
   screenshot clarity)
 - `isSolved()` — checks if the cube is in solved state
 - `waitUntilIdle(maxMs?)` — resolves when animations have finished
@@ -309,10 +312,10 @@ moves and appending the solution. Run: `node tests/cursor-test.js`
 (`npm run verify:cursor`).
 
 ### `tests/drawers-test.js`
-Playwright tests for **both** slide-out drawers' auto-close-on-overlap and
-width-dependent startup. Each drawer is checked **independently**: a narrow
-viewport starts it **closed** (the panel would cover the cube) while a wide one
-starts it **open**; the test clicks **Scramble**/**Solve** and reads each tab's
+Playwright tests for the slide-out **face-button drawer's** auto-close-on-overlap
+and width-dependent startup: a narrow viewport starts it **closed** (the panel
+would cover the cube) while a wide one starts it **open**; the test opens the
+drawer if it started closed, clicks **Scramble**/**Solve**, and reads the tab's
 `aria-expanded` to confirm the drawer auto-closes when it would cover the cube and
 stays open when it doesn't. Run: `node tests/drawers-test.js`
 (`npm run test:drawer`).
@@ -351,15 +354,16 @@ drains (`settle` refreshes them once). Checks, in order:
 - Mid-sequence Scramble: buttons left untouched (no flicker); after it settles,
   `← Step` enabled and `Step →` disabled; in the middle of a long log both are
   live; walked all the way back, `← Step` disables again.
-- Disabled flags are read from the buttons' `disabled` DOM property (independent
-  of whether the Controls drawer is open), and the test runs at 3× speed so the
+- Disabled flags are read from the buttons' `disabled` DOM property (regardless
+  of the face drawer's state), and the test runs at 3× speed so the
   random 18–35 move scramble drains within its wait timeout.
 - Run: `node tests/step-buttons-test.js` (`npm run test:step`).
 
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
-screenshots — `solved.png`, `scrambled.png`, `solved-after.png` — each with **both
-drawers open** and the cube in the gap between them. It drives the **real Scramble
+screenshots — `solved.png`, `scrambled.png`, `solved-after.png` — each with the
+**face-button drawer open** (left edge) plus the always-visible **Move Log
+panel** at the bottom. It drives the **real Scramble
 and Solve buttons** (so the shots reflect the current randomized scramble and
 solver), waiting for each animation to finish via `waitUntilIdle`. The harness:
 
@@ -405,11 +409,12 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   of buttons (`U'…B'`), so no modifier is needed for the on-screen controls. The
   face *keys* keep `Shift` as the prime modifier and `Alt`/`Option` as the
   half-turn modifier for desktop keyboards.
-- **Drawers, not static panels**: both the layer buttons (left edge) and the
-  controls panel (right edge) hide behind a vertical tab. The horizontal slide
-  lives on an inner `.drawer-unit` transform so it never fights the outer
-  element's vertical centering. Each toggle is a `click` on the tab (works on
-  iPad, no keyboard) or the `T` (face) / `C` (controls) key.
+- **Drawer + always-visible panel**: the layer buttons (left edge) hide behind a
+  vertical tab in a slide-out drawer — the horizontal slide lives on an inner
+  `.drawer-unit` transform so it never fights the outer element's vertical
+  centering, and the toggle is a `click` on the tab (works on iPad, no keyboard)
+  or the `T` key. The Move Log is the opposite: a fixed bottom panel that is
+  **always visible** (no drawer state at all).
 - **Drawer first-load race**: Tailwind v4's browser build loads via the runtime
   **Play CDN `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
   module first runs. Measuring the closed shift that early is too small and leaves
@@ -417,11 +422,12 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable width; auto
   re-measurements snap (no slide), so the panel never visibly slides or peeks on
   first load.
-- **Drawers auto-close independently**: on a wide screen, **both** drawers open at
-  startup. On a narrow screen, both stay closed. When a Scramble or Solve is
-  triggered, each drawer is checked independently via `drawerOverlapsCube()`; only
-  the ones that would cover the cube are auto-closed. The `decideStartupDrawers()`
-  function tentatively opens both, tests each, and closes whichever overlaps.
+- **Face drawer auto-close**: the face drawer **opens at startup on a wide
+  screen** and starts **closed on a narrow one**. When a Scramble or Solve is
+  triggered, the open drawer's bounding box is checked against the cube's
+  projected on-screen area via `drawerOverlapsCube()`; it is auto-closed only if
+  it would cover the cube. The `decideStartupFaceDrawer()` function tentatively
+  opens the drawer, runs the very same test, and closes it if it overlaps.
 - **Batch animation**: scramble and solve clear the log, then enqueue the entire
   sequence up front (so the Move Log shows all buttons at once), then auto-advance
   via `startCurrent()` → `finishMove()` → `startCurrent()` … until the queue drains.
@@ -433,9 +439,9 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   to mouse-wheel zoom. Single-finger touch orbit is also supported.
 - **Drawer overlap detection**: `drawerOverlapsCube(drawerEl)` projects the cube's
   world-space AABB through the camera to screen pixels, then performs an axis-aligned
-  rectangle intersection test against the drawer's `getBoundingClientRect()`. Both
-  drawers are checked independently; `decideStartupDrawers()` uses this to pick the
-  startup open/closed state of each drawer independently.
+  rectangle intersection test against the drawer's `getBoundingClientRect()`. It is
+  used both by the Scramble/Solve auto-close and by `decideStartupFaceDrawer()` to
+  pick the face drawer's startup open/closed state.
 - **Render loop**: `requestAnimationFrame` loop with `paused` flag (set during
   screenshot capture). dt capped at 50ms to prevent spiral-of-death.
 - **`window.__RUBIKS__` hook**: `setCamera()` resets to home position; `setPixelRatio(pr)`
