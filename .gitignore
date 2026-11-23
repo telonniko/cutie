@@ -17,5 +17,3 @@ node_modules/
 # temporary test artifacts (screenshots, etc.) — the whole tmp/ tree is ignored
 /tmp/
 
-# verification screenshots at the repo root (docs/screenshots/ is tracked and stays)
-/screenshots/
