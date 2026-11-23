@@ -121,10 +121,10 @@
        sits in the gap between the two drawers. On a narrow screen it stays
        closed — only a vertical "Controls" tab peeks out on the panel's left edge
        (i.e. the screen's right edge). Click/tap the tab — or press 'c' — to slide
-       the panel out; do it again to slide it back.  The panel holds the Move Log,
-       the Animation-speed slider, and the five primary-action buttons.  The status
-       pill and move counter live in the header, so they stay visible even when
-       this drawer is closed. -->
+       the panel out; do it again to slide it back.  The panel now holds only the
+       Move Log (the Animation-speed slider and the five primary-action buttons
+       live in the left face-button drawer).  The status pill and move counter
+       live in the header, so they stay visible even when this drawer is closed. -->
   <aside class="fixed right-4 top-16 bottom-4 z-20 pointer-events-none">
     <div id="controls-drawer" class="drawer-unit-r drawer-closed flex items-stretch gap-1.5 h-full w-72 max-w-[320px]">
       <!-- The binder tab: always visible, toggles the drawer on click/tap. A real
@@ -151,26 +151,6 @@
             <div id="log-list" class="grid grid-cols-5 gap-1.5 content-start"></div>
           </div>
         </section>
-
-        <!-- Speed -->
-        <section class="rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl px-4 py-3">
-          <div class="flex items-center justify-between mb-2">
-            <label for="speed" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Animation speed</label>
-            <span id="speed-val" class="text-xs text-slate-400 tabular-nums">1.0×</span>
-          </div>
-          <input id="speed" type="range" min="0.3" max="3" step="0.1" value="1"
-                 class="w-full" />
-          <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Slow</span><span>Fast</span></div>
-        </section>
-
-        <!-- Primary actions -->
-        <section class="grid grid-cols-2 gap-2">
-          <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Scramble</button>
-          <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Solve</button>
-          <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">← Step</button>
-          <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">Step →</button>
-          <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2.5 text-sm font-semibold shadow-lg transition">Reset</button>
-        </section>
       </div>
     </div>
   </aside>
@@ -180,19 +160,42 @@
        (the layer drawer + the cube + the controls panel all fit); on a narrow
        screen it stays closed and only a vertical "Turn a layer" tab peeks out on
        the panel's right edge. Click/tap the tab to slide the panel out; click it
-       again (or press 't') to slide it back.  Three columns: clockwise
-       quarter-turns (U…B), counter-clockwise quarter-turns (U'…B'), and 180°
-       half-turns (U2…B2).  Each button is one fixed move, so a tap always does
-       exactly one thing with no modifier — important on touch devices (e.g. iPad)
-       that have no Shift key. -->
+       again (or press 't') to slide it back.  One tall bordered panel stacks,
+       top to bottom: three face-button columns (clockwise quarter-turns U…B,
+       counter-clockwise quarter-turns U'…B', and 180° half-turns U2…B2), the
+       Animation-speed slider, and the five primary-action buttons (Scramble,
+       Solve, ← Step, Step →, Reset) in an inner bordered sub-panel.  Each face
+       button is one fixed move, so a tap always does exactly one thing with no
+       modifier — important on touch devices (e.g. iPad) that have no Shift key. -->
   <div class="fixed left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
     <div id="face-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
-      <!-- The button panel: slides left to hide; the tab sits to its right. -->
-      <div class="pointer-events-auto rounded-l-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3">
+      <!-- The button panel: slides left to hide; the tab sits to its right. One
+           bordered card stacks the face columns, the speed slider, and the
+           action-button sub-panel; the card's width stays driven by the face
+           columns (the lower sections stretch to fill the inner width). -->
+      <div class="pointer-events-auto rounded-l-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3 max-h-[95vh] overflow-y-auto scroll-thin">
         <div class="flex items-start gap-1.5">
           <div id="face-buttons" class="flex flex-col gap-1.5"></div>
           <div id="prime-buttons" class="flex flex-col gap-1.5"></div>
           <div id="half-buttons" class="flex flex-col gap-1.5"></div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-white/10">
+          <div class="flex items-center justify-between mb-2">
+            <label for="speed" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Animation speed</label>
+            <span id="speed-val" class="text-xs text-slate-400 tabular-nums">1.0×</span>
+          </div>
+          <input id="speed" type="range" min="0.3" max="3" step="0.1" value="1"
+                 class="w-full" />
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Slow</span><span>Fast</span></div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-white/10">
+          <div class="rounded-xl ring-1 ring-white/10 bg-slate-800/50 p-2 grid grid-cols-2 gap-1.5">
+            <button id="btn-scramble" class="rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white py-2 min-h-10 text-xs font-semibold shadow-lg transition">Scramble</button>
+            <button id="btn-solve" class="rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-white py-2 min-h-10 text-xs font-semibold shadow-lg transition">Solve</button>
+            <button id="btn-stepbwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2 min-h-10 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">← Step</button>
+            <button id="btn-stepfwd" class="rounded-xl bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 py-2 min-h-10 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">Step →</button>
+            <button id="btn-reset" class="col-span-2 rounded-xl bg-rose-500/90 hover:bg-rose-500 text-white py-2 min-h-10 text-xs font-semibold shadow-lg transition">Reset</button>
+          </div>
         </div>
       </div>
       <!-- The binder tab: always visible, toggles the drawer on click/tap. A real
