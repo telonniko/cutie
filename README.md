@@ -68,13 +68,13 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   counter.
 
 ### Controls drawer (right edge) — a slide-out drawer
-The Move Log, speed slider, and primary-action buttons live in a panel that
-**hides behind a tab** on the right edge — the mirror of the face-button drawer
-on the left. On a wide screen the app opens **both** drawers at startup (cube in
-the gap between them); on a narrow one they start closed, and either drawer
-auto-closes when a Scramble/Solve would slide it onto the cube. The tab is a
-vertical **"Controls"** handle on the panel's left edge; **`C`** toggles it from
-the keyboard (Tab drives focus navigation, so it's not used here).
+The Move Log lives in a panel that **hides behind a tab** on the right edge —
+the mirror of the face-button drawer on the left. On a wide screen the app opens
+**both** drawers at startup (cube in the gap between them); on a narrow one they
+start closed, and either drawer auto-closes when a Scramble/Solve would slide it
+onto the cube. The tab is a vertical **"Controls"** handle on the panel's left
+edge; **`C`** toggles it from the keyboard (Tab drives focus navigation, so
+it's not used here).
 - **Move Log** — the executed moves shown as a **grid of move-buttons, 5 per
   row** (each button is one token like `R`, `U'`, `F2`), styled to match the
   face buttons. As a scramble or solve animates, the button for the move being
@@ -83,23 +83,9 @@ the keyboard (Tab drives focus navigation, so it's not used here).
   total moves is shown at
   the top of the card, and the panel **scrolls** when the grid is taller than the
   panel.
-- **Animation speed** — a slider (0.3×–3×) that controls how fast every
-  scramble/solve/turn animates.
-- **Primary actions** (bottom of panel):
-  | Button | Action |
-  | --- | --- |
-  | **Scramble** | Apply a random scramble with animation (clears the log first). |
-  | **Solve** | Clear the log, then compute + animate the solution for the cube as it is now. |
-  | **← Step** | Step the current position back one move (undo, keeping it in the log to replay). Disabled at the start of the log — nothing applied yet to undo. |
-  | **Step →** | Advance the current step one move (replay the next move in the log). Disabled at the end of the log — nothing left to replay. |
-  | **Reset** | Instantly return the cube to the solved state. |
 
-  The two step buttons **disable themselves** when there is no move in that
-  direction: **← Step** greys out at the start of the log (nothing applied to
-  undo) and **Step →** greys out at the end (nothing future to replay). In the
-  middle of the log both are live. The flags refresh only when a move finishes
-  and the sequence settles, so a Scramble/Solve animating through many moves
-  never flickers the buttons on screen.
+  (The speed slider and the primary-action buttons live in the face-button
+  drawer on the left — see below.)
 
 ### Face buttons (left edge) — a slide-out drawer
 The face buttons live in a panel that **hides behind a tab** on the left edge,
@@ -116,7 +102,9 @@ opened:
 - **`T`** toggles the same drawer from the keyboard. (Tab is not used: it
   drives browser focus navigation, and the primary action buttons are focusable.)
 
-When open, the panel shows three vertical columns of buttons. Each button is
+When open, the panel is one tall card that stacks, top to bottom: the three
+vertical columns of face buttons, the animation-speed slider, and the five
+primary-action buttons in an inner bordered sub-panel. Each face button is
 **one fixed move**, so a tap always does exactly one thing with no modifier —
 this matters on touch devices (e.g. iPad) that have no Shift key. Each button
 turns its layer on the live cube the moment it is **released**:
@@ -127,6 +115,28 @@ turns its layer on the live cube the moment it is **released**:
 
 Labels are fixed (a 180° has no direction, and the prime is its own button), so
 there is no modifier to watch and nothing to repaint.
+
+At the bottom of the panel, below the face columns, sit the slider and the
+action buttons:
+
+- **Animation speed** — a slider (0.3×–3×) that controls how fast every
+  scramble/solve/turn animates. It sits between the face columns and the
+  action buttons.
+- **Primary actions** (in an inner bordered sub-panel):
+  | Button | Action |
+  | --- | --- |
+  | **Scramble** | Apply a random scramble with animation (clears the log first). |
+  | **Solve** | Clear the log, then compute + animate the solution for the cube as it is now. |
+  | **← Step** | Step the current position back one move (undo, keeping it in the log to replay). Disabled at the start of the log — nothing applied yet to undo. |
+  | **Step →** | Advance the current step one move (replay the next move in the log). Disabled at the end of the log — nothing left to replay. |
+  | **Reset** | Instantly return the cube to the solved state. |
+
+  The two step buttons **disable themselves** when there is no move in that
+  direction: **← Step** greys out at the start of the log (nothing applied to
+  undo) and **Step →** greys out at the end (nothing future to replay). In the
+  middle of the log both are live. The flags refresh only when a move finishes
+  and the sequence settles, so a Scramble/Solve animating through many moves
+  never flickers the buttons on screen.
 
 The turns fire on **pointer release**, not the browser's synthesized `click`
 event: Safari can drop that event after a tap, so triggering on `pointerup`

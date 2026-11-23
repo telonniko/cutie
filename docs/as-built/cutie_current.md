@@ -87,9 +87,14 @@ slides in from the left when opened:
 - **Tab is not the shortcut**: it drives browser focus navigation and the primary
   action buttons are focusable, so `T` is used instead.
 
-When open, the panel shows three vertical columns: each button is **one fixed
-move**, so a tap always does exactly one thing with no modifier — important on
-touch devices (e.g. iPad) that have no Shift key:
+When open, the panel is **one tall bordered card** that stacks (top to bottom)
+the three face-button columns, a divider, the **Animation-speed slider** (see
+below), another divider, and the five **primary-action buttons** (Scramble /
+Solve / ← Step / Step → / Reset) in an **inner bordered sub-panel**. The card's
+width stays driven by the face columns; the slider and the button sub-panel
+stretch to fill the same inner width. Each face button is **one fixed move**, so a
+tap always does exactly one thing with no modifier — important on touch devices
+(e.g. iPad) that have no Shift key:
 
 - **Left — clockwise quarter turns (`U D L R F B`)**: each is a single 90° turn.
 - **Middle — counter-clockwise quarter turns (`U' D' L' R' F' B'`)**: each is a
@@ -109,7 +114,11 @@ The face **keys** (`U D L R F B`, `Shift` + a face key for the prime, `Alt` /
 `Option` + a face key for the 180° half turn) still work as keyboard shortcuts
 on desktop.
 
-### Primary actions (right panel, bottom)
+### Primary actions (left panel, in the face-button drawer)
+The five primary-action buttons live at the bottom of the left face-button
+drawer, in an inner bordered sub-panel (2-column grid; Reset spans both
+columns):
+
 | Button | Action |
 |--------|--------|
 | **Scramble** | Random 18–35 move scramble, no two consecutive same-face, animated. Clears the log first. |
@@ -159,6 +168,8 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   state and refresh just once at the end — no flicker.
 
 ### Animation speed slider
+- Lives in the **left face-button drawer**, between the face columns and the
+  action-button sub-panel (it moved there from the right controls drawer).
 - Range slider (0.3–3, step 0.1, default 1.0) with "Slow"/"Fast" labels.
   Displayed as e.g. `1.0×`.
 
@@ -180,11 +191,11 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Controls drawer (right edge)
 - A **slide-out drawer** — the mirror of the face-button drawer, on the right. It
-  holds the Move Log, the speed slider, and the primary-action buttons. It
-  **opens at startup on a wide screen and stays closed on a narrow one**, and it
-  **auto-closes** (independently of the other drawer) when a Scramble/Solve would
-  slide it onto the cube. Tapping its vertical "Controls" tab (or pressing `C`)
-  toggles it.
+  holds **only the Move Log** (the speed slider and the primary-action buttons
+  live in the left face-button drawer, see §4). It **opens at startup on a wide
+  screen and stays closed on a narrow one**, and it **auto-closes** (independently
+  of the other drawer) when a Scramble/Solve would slide it onto the cube.
+  Tapping its vertical "Controls" tab (or pressing `C`) toggles it.
 - **Move Log**: grid of move-buttons (5 per row), one per move token. Three
   visual states driven by the **cursor** — **past** (index `< cursor`, faint
   done look), **pending** (index `>= cursor`, dim), **current** (the move
@@ -192,8 +203,9 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   the current button auto-scrolls into view. Empty state shows a placeholder
   message. The "Moves" counter shows the number of moves actually applied
   (the cursor).
-- **Animation speed**, and **Primary actions** sections
-  (described in §4).
+- The Move Log section is `flex-1`, so it fills the panel's full height on its
+  own. The speed slider and primary-action sections that formerly lived here are
+described in §4 (they now live in the face-button drawer).
 
 ### Face buttons panel (left edge)
 - A **slide-out drawer**: it **opens at startup on a wide screen and stays closed
@@ -203,8 +215,10 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   the tab (or pressing `T`) slides the panel out; tapping again slides it back. The
   tab is the rightmost child, so hiding the panel (sliding it left) leaves the tab
   on screen.
-- Glassy panel, three button columns (clockwise quarter, counter-clockwise
-  quarter, half). No top label — the tab *is* the "Turn a layer" label.
+- Glassy panel: ONE tall bordered card stacking the three button columns
+  (clockwise quarter, counter-clockwise quarter, half), the Animation-speed
+  slider, and the five action buttons in an inner bordered sub-panel. No top
+  label — the tab *is* the "Turn a layer" label.
 
 ### Misc
 - **Drag-to-rotate hint**: a small pill, centered horizontally near the top, "Drag
