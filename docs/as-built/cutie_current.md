@@ -211,7 +211,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   that **hugs its content** (up to ~12 buttons wide).
 - **Header**: "Move Log" title + a live **move-count** (e.g. `12 moves`).
 - **Move Log**: a row of move-buttons that **wraps**, one per move token, each a
-  **fixed 40px wide** (`2.5rem`, flex `0 0 auto` — never a fluid grid
+  **fixed 36px wide** (`2.25rem`, flex `0 0 auto` — never a fluid grid
   fraction), **up to 12 per row**, centered. The list's max width is 12 buttons
   + 11 gaps, so on narrow screens fewer than 12 fit per row and it wraps — no
   horizontal overflow. Three visual states driven by the **cursor** — **past**
