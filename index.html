@@ -42,7 +42,7 @@
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.03);
     transform: translateY(2px) scale(0.94);
   }
-  /* Layer-button drawer: the panel slides in/out horizontally. The outer fixed
+  /* Control panel drawer: the panel slides in/out horizontally. The outer fixed
      element owns the vertical centering (-translate-y-1/2), so the horizontal
      slide lives here on its own transform. .drawer-closed translates the unit
      left by --drawer-shift (set in JS: unit width minus the tab width) so the
@@ -84,25 +84,30 @@
   <!-- 3D viewport -->
   <div id="canvas-wrap"></div>
 
-  <!-- ======================= Top bar ======================= -->
-  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none">
-    <div class="flex items-center justify-between px-4 py-3">
-      <div class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
-        <div class="flex items-center gap-3">
-          <div class="grid grid-cols-3 gap-0.5">
-            <span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-yellow-400"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-blue-500"></span>
-            <span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-orange-500"></span>
-            <span class="w-2.5 h-2.5 rounded-[3px] bg-red-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span>
-          </div>
-          <div>
-            <h1 class="text-sm font-semibold tracking-wide">Cutie</h1>
-            <p class="text-[11px] text-slate-400 -mt-0.5">3D Rubik's Cube Solver</p>
-          </div>
+  <!-- ======================= Top banner (full-width, top edge) ======================= -->
+  <!-- One continuous edge-to-edge strip fixed to the top edge, overlaid on the
+       full-viewport canvas (no top padding added to the canvas). Its dark
+       background is only a hair lighter than the visible slate-900 scene background — a
+       ~3% white wash over the same base — so it reads as a banner, not a
+       separate card. Like the bottom Move Log strip, the outer element is
+       pointer-events-none (the canvas stays draggable beneath it) while the
+       title block and status pill inside are pointer-events-auto. -->
+  <header class="fixed inset-x-0 top-0 z-20 pointer-events-none bg-white/[0.03]">
+    <div class="flex items-center justify-between gap-3 px-4 py-2">
+      <div class="pointer-events-auto flex min-w-0 items-center gap-3">
+        <div class="grid shrink-0 grid-cols-3 gap-0.5">
+          <span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-yellow-400"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-blue-500"></span>
+          <span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-orange-500"></span>
+          <span class="w-2.5 h-2.5 rounded-[3px] bg-red-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-sm font-semibold tracking-wide">Cutie</h1>
+          <p class="truncate text-[11px] text-slate-400 -mt-0.5">3D Rubik's Cube Solver</p>
         </div>
       </div>
 
       <!-- Status indicator -->
-      <div id="status-pill" class="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
+      <div id="status-pill" class="pointer-events-auto flex shrink-0 items-center gap-2 rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
         <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
         <span id="status-text" class="text-sm font-medium">Solved</span>
         <span class="mx-1 h-4 w-px bg-white/10"></span>
@@ -138,12 +143,12 @@
     </section>
   </div>
 
-  <!-- ======================= Face buttons (left edge) — slide-out drawer ======================= -->
+  <!-- ======================= Control Panel (left edge) — slide-out drawer ======================= -->
   <!-- Width-dependent at start: on a wide screen the panel opens straight away
-       (the layer drawer + the cube all fit); on a narrow
-       screen it stays closed and only a vertical "Turn a layer" tab peeks out on
-       the panel's right edge. Click/tap the tab to slide the panel out; click it
-       again (or press 't') to slide it back.  One tall bordered panel stacks,
+       (the control drawer + the cube all fit); on a narrow
+       screen it stays closed and only a vertical "Control Panel" tab peeks out
+       on the panel's right edge. Click/tap the tab to slide the panel out; click
+       it again (or press 'c') to slide it back.  One tall bordered panel stacks,
        top to bottom: three face-button columns (clockwise quarter-turns U…B,
        counter-clockwise quarter-turns U'…B', and 180° half-turns U2…B2), the
        Animation-speed slider, and the five primary-action buttons (Scramble,
@@ -151,16 +156,25 @@
        button is one fixed move, so a tap always does exactly one thing with no
        modifier — important on touch devices (e.g. iPad) that have no Shift key. -->
   <div class="fixed left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-    <div id="face-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
+    <div id="control-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
       <!-- The button panel: slides left to hide; the tab sits to its right. One
            bordered card stacks the face columns, the speed slider, and the
            action-button sub-panel; the card's width stays driven by the face
            columns (the lower sections stretch to fill the inner width). -->
       <div class="pointer-events-auto rounded-l-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl p-3 max-h-[95vh] overflow-y-auto scroll-thin">
         <div class="flex items-start gap-1.5">
-          <div id="face-buttons" class="flex flex-col gap-1.5"></div>
-          <div id="prime-buttons" class="flex flex-col gap-1.5"></div>
-          <div id="half-buttons" class="flex flex-col gap-1.5"></div>
+          <div class="flex flex-col items-center gap-1.5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 leading-none">CW</span>
+            <div id="face-buttons" class="flex flex-col gap-1.5"></div>
+          </div>
+          <div class="flex flex-col items-center gap-1.5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 leading-none">CCW</span>
+            <div id="prime-buttons" class="flex flex-col gap-1.5"></div>
+          </div>
+          <div class="flex flex-col items-center gap-1.5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 leading-none">Half</span>
+            <div id="half-buttons" class="flex flex-col gap-1.5"></div>
+          </div>
         </div>
         <div class="mt-3 pt-3 border-t border-white/10">
           <div class="flex items-center justify-between mb-2">
@@ -183,21 +197,22 @@
       </div>
       <!-- The binder tab: always visible, toggles the drawer on click/tap. A real
            <button>, so a tap in Safari fires a click (works with no keyboard). -->
-      <button id="face-drawer-tab"
+      <button id="control-drawer-tab"
         class="pointer-events-auto writing-vertical flex items-center justify-center
                text-[10px] uppercase tracking-wider font-semibold text-slate-300
                bg-slate-800 hover:bg-slate-700 ring-1 ring-white/10 rounded-r-xl
                px-2 py-3 cursor-pointer select-none touch-manipulation"
-        aria-controls="face-drawer" aria-expanded="false"
-        aria-label="Show or hide the layer buttons">Turn a layer</button>
+        aria-controls="control-drawer" aria-expanded="false"
+        aria-label="Show or hide the control panel">Control Panel</button>
     </div>
   </div>
 
-  <!-- ======================= Solver loading toast ======================= -->
-  <div id="solver-toast" class="fixed left-1/2 bottom-6 -translate-x-1/2 z-30 hidden">
-    <div class="flex items-center gap-2 rounded-xl bg-slate-900/90 backdrop-blur-md ring-1 ring-white/10 px-4 py-2.5 shadow-2xl">
-      <div class="w-6 h-6 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-      <span class="text-xl text-slate-200">Warming up the solver…</span>
+  <!-- ======================= Solver loading toast =======================
+       Full-viewport overlay, flex-centered, above canvas/drawers (z-50). -->
+  <div id="solver-toast" class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none hidden">
+    <div class="flex items-center gap-4 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-8 py-6 shadow-2xl">
+      <div class="w-12 h-12 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-[2.5rem] text-slate-200">Waking up the ChipGPT-munk...</span>
     </div>
   </div>
 
@@ -942,13 +957,13 @@
     f => f + ' layer — 180°',
     'bg-sky-800/70 hover:bg-sky-700 ring-1 ring-sky-400/20 font-mono');
 
-  // --- Layer-button drawer ---
+  // --- Control panel drawer ---
   // The panel hides off the left edge behind a vertical tab that is its rightmost
   // child.  Clicking/tapping the tab slides the panel out; clicking it again
-  // (or pressing 't') slides it back.  The horizontal slide lives on the inner
+  // (or pressing 'c') slides it back.  The horizontal slide lives on the inner
   // .drawer-unit so it never fights the outer element's vertical centering.
-  const faceDrawer = document.getElementById('face-drawer');
-  const faceTab = document.getElementById('face-drawer-tab');
+  const controlDrawer = document.getElementById('control-drawer');
+  const controlTab = document.getElementById('control-drawer-tab');
   let drawerOpen = false;
   // Measure and snap the drawer to the freshly computed shift.  When animate is
   // false the transition is suppressed so an auto re-measurement can't slide the
@@ -963,22 +978,22 @@
     // its distance to the viewport's left edge.  The brief class toggle runs
     // synchronously with the transition off, so the browser never paints the
     // intermediate open position — only the final closed frame is painted.
-    const panel = faceDrawer.children[0];
-    faceDrawer.style.transition = 'none';
-    faceDrawer.classList.remove('drawer-closed');
+    const panel = controlDrawer.children[0];
+    controlDrawer.style.transition = 'none';
+    controlDrawer.classList.remove('drawer-closed');
     const shift = -panel.getBoundingClientRect().right;
-    faceDrawer.style.transition = animate ? '' : 'none';
-    faceDrawer.style.setProperty('--drawer-shift', shift + 'px');
-    faceDrawer.classList.toggle('drawer-closed', !drawerOpen);
-    faceTab.setAttribute('aria-expanded', String(drawerOpen));
+    controlDrawer.style.transition = animate ? '' : 'none';
+    controlDrawer.style.setProperty('--drawer-shift', shift + 'px');
+    controlDrawer.classList.toggle('drawer-closed', !drawerOpen);
+    controlTab.setAttribute('aria-expanded', String(drawerOpen));
   }
   function toggleDrawer() { drawerOpen = !drawerOpen; applyShift(true); }
   // Close the drawer (if open), sliding the panel off the left edge.
-  function closeFaceDrawer() { if (drawerOpen) { drawerOpen = false; applyShift(true); } }
+  function closeControlDrawer() { if (drawerOpen) { drawerOpen = false; applyShift(true); } }
   // A click is enough to toggle: a tap on a real <button> in Safari fires a
   // click, so this works on iPad with no keyboard.  (Only the face buttons
   // themselves need pointerup.)
-  faceTab.onclick = toggleDrawer;
+  controlTab.onclick = toggleDrawer;
 
   // The CDN Tailwind CSS is injected at runtime by a <script> (not a <style>),
   // so the w-12 / gap / p-3 columns may not have their final width when the
@@ -986,28 +1001,28 @@
   // the CSS default (fully hidden) until layout is ready, then snap it closed and
   // re-measure on any later size change.  Because auto re-measurements don't
   // animate, the panel never visibly slides on first load.
-  function armDrawer() {
+  function armControlDrawer() {
     applyShift(false);
     if (typeof ResizeObserver !== 'undefined') {
-      new ResizeObserver(() => applyShift(false)).observe(faceDrawer);
+      new ResizeObserver(() => applyShift(false)).observe(controlDrawer);
     } else {
       addEventListener('resize', () => applyShift(false));
     }
   }
-  if (document.readyState === 'complete') requestAnimationFrame(armDrawer);
-  else addEventListener('load', armDrawer);
+  if (document.readyState === 'complete') requestAnimationFrame(armControlDrawer);
+  else addEventListener('load', armControlDrawer);
   // A couple of extra rAFs catch the moment the CDN CSS finishes injecting styles
-  // even on very fast, already-cached loads, then pick the face drawer's startup
-  // open/closed state (see decideStartupFaceDrawer, defined below).
-  requestAnimationFrame(() => requestAnimationFrame(decideStartupFaceDrawer));
+  // even on very fast, already-cached loads, then pick the control drawer's
+  // startup open/closed state (see decideStartupControlDrawer, defined below).
+  requestAnimationFrame(() => requestAnimationFrame(decideStartupControlDrawer));
 
   // True when an open drawer — the WHOLE panel including its tab, read from its
   // own bounding box — geometrically overlaps the cube's on-screen area.  The
   // cube's world-space AABB is projected to screen pixels through the camera; the
   // drawer's rect is its getBoundingClientRect().  Used both to decide whether a
-  // Scramble/Solve (which animate the cube) should first slide the face drawer
-  // away so the animation stays visible, and to pick the STARTUP open/closed
-  // state of the face drawer (see decideStartupFaceDrawer).
+  // Scramble/Solve (which animate the cube) should first slide the control
+  // drawer away so the animation stays visible, and to pick the STARTUP
+  // open/closed state of the control drawer (see decideStartupControlDrawer).
   function drawerOverlapsCube(drawerEl) {
     const d = drawerEl.getBoundingClientRect();
     if (d.width === 0 || d.height === 0) return false;
@@ -1034,7 +1049,7 @@
     return !(r < drawer.l || l > drawer.r || b < drawer.t || t > drawer.b);
   }
   // --- Startup drawer state -------------------------------------------------
-  // On a wide-enough screen, open the face drawer so the layer buttons (left
+  // On a wide-enough screen, open the control drawer so the face buttons (left
   // edge) are visible.  On a narrow screen the panel would land on top of the
   // cube, so it starts closed and only its binder tab peeks out.  The drawer is
   // opened iff its open-position rect clears the cube's projected on-screen
@@ -1043,25 +1058,25 @@
   // first arming tick can run before frame one, so refresh the matrix before
   // measuring.  (The bottom Move Log panel is always visible and needs no
   // startup decision.)
-  function decideStartupFaceDrawer() {
+  function decideStartupControlDrawer() {
     camera.updateMatrixWorld(true);
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     // Tentatively open the drawer so its rect reflects its open position.
     drawerOpen = true;
     applyShift(false);
     // Close it if it would cover the cube; otherwise leave it open.
-    drawerOpen = !drawerOverlapsCube(faceDrawer);
+    drawerOpen = !drawerOverlapsCube(controlDrawer);
     applyShift(false);
   }
 
   // --- Primary buttons ---
-  // Scramble and Solve animate the cube, so first make room: when the face
+  // Scramble and Solve animate the cube, so first make room: when the control
   // drawer is open and its panel (with tab) would sit on top of the cube, slide
   // it away so the animation stays visible. Non-overlapping (e.g. wide screens)
   // is left open. The check runs with drawerOverlapsCube().
-  const closeFaceDrawerOverCube = () => { if (drawerOpen && drawerOverlapsCube(faceDrawer)) closeFaceDrawer(); };
-  document.getElementById('btn-scramble').onclick = () => { closeFaceDrawerOverCube(); scramble(); };
-  document.getElementById('btn-solve').onclick = () => { closeFaceDrawerOverCube(); solve(); };
+  const closeControlDrawerOverCube = () => { if (drawerOpen && drawerOverlapsCube(controlDrawer)) closeControlDrawer(); };
+  document.getElementById('btn-scramble').onclick = () => { closeControlDrawerOverCube(); scramble(); };
+  document.getElementById('btn-solve').onclick = () => { closeControlDrawerOverCube(); solve(); };
   document.getElementById('btn-reset').onclick = resetCube;
   const stepFwdBtn = document.getElementById('btn-stepfwd');
   const stepBwdBtn = document.getElementById('btn-stepbwd');
@@ -1120,7 +1135,7 @@
     if (e.key === ' ' || e.code === 'Space') { solve(); e.preventDefault(); return; }
     if (e.key === '0') { resetCube(); return; }
     if (e.key === 's') scramble();
-    if (e.key === 't' || e.key === 'T') { toggleDrawer(); return; }
+    if (e.key === 'c' || e.key === 'C') { toggleDrawer(); return; }
   });
 
   // Step through the log one move at a time, moving the cursor. auto=false so
@@ -1311,7 +1326,6 @@
       tick();
     }),
   };
-  window.__RUBIKS__.ready && console.log('Cutie ready');
   </script>
 
   <!-- ======================= Bottom-left attribution ======================= -->
@@ -1327,11 +1341,11 @@
        propagation, so the app's own key/click handlers keep working. The hint is
        pointer-events:none, so the dismissing interaction passes through it.
        The bottom-left attribution (the "created with qwen3.8:27b-mlx-4bit" credit
-       card) is intentionally NOT a hint: it is not in this dismiss list and stays
-       visible at all times. -->
+       card) is in this dismiss list as well, so it hides at the exact same
+       moment (first key press or pointer interaction) as the drag hint. -->
   <script>
     (function hideHintsOnFirstInteraction() {
-      const hints = [document.getElementById('drag-hint')].filter(Boolean);
+      const hints = [document.getElementById('drag-hint'), document.getElementById('attribution')].filter(Boolean);
       if (!hints.length) return;
       const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       let dismissed = false;

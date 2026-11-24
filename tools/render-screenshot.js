@@ -4,7 +4,7 @@
  * Drives the real index.html in headless Chromium (Playwright) and produces
  * the three project screenshots — solved, scrambled, and solved-after-solve.
  *
- * Each shot shows the face-button drawer open (left edge) — plus the
+ * Each shot shows the control drawer open (left edge) — plus the
  * always-visible Move Log panel at the bottom — the layout the app produces on
  * a wide screen.  The scramble and solve are triggered by
  * clicking the real Scramble / Solve buttons (not by pushing an algorithm in
@@ -96,13 +96,13 @@ async function main() {
   }
 
   // ---- Drawer state per shot ----------------------------------------------
-  // All three shots show the face-button drawer open (left edge) — the layout
+  // All three shots show the control drawer open (left edge) — the layout
   // the app produces on a wide screen — plus the always-visible Move Log panel
   // at the bottom.  Opening the drawer is a tab click, the real user gesture
   // (it works on iPad with no keyboard).  The check-and-toggle makes each shot
   // explicit and independent of the viewport.
   async function setDrawers(open) {
-    for (const sel of ['#face-drawer-tab']) {
+    for (const sel of ['#control-drawer-tab']) {
       const isOpen = await page.evaluate(
         (s) => document.querySelector(s).getAttribute('aria-expanded') === 'true', sel);
       if (isOpen !== open) {
@@ -112,14 +112,14 @@ async function main() {
     }
   }
 
-  // ---- 1. Solved (initial state, face drawer open) ----
+  // ---- 1. Solved (initial state, control drawer open) ----
   await page.evaluate(() => window.__RUBIKS__.setCamera());
   await setDrawers(true);
   await page.waitForTimeout(300);
   await snap('solved.png');
   console.log('✓ solved.png       status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
-  // ---- 2. Scrambled (drive the real Scramble button; face drawer open) ----
+  // ---- 2. Scrambled (drive the real Scramble button; control drawer open) ----
   // Clicking the button is what a user does, so the shot reflects the current
   // scramble() (a random 18–35 move sequence) rather than a hard-coded one.  Wait
   // for the animation to finish, then render the log with every move as "done" so
@@ -133,7 +133,7 @@ async function main() {
   await snap('scrambled.png');
   console.log('✓ scrambled.png    status=' + await page.evaluate(() => window.__RUBIKS__.status) + '  isSolved=' + await page.evaluate(() => window.__RUBIKS__.isSolved()));
 
-  // ---- 3. Solved-after-solve (drive the real Solve button; face drawer open) ----
+  // ---- 3. Solved-after-solve (drive the real Solve button; control drawer open) ----
   // Same idea: click Solve and wait for the animation to end, so the shot shows
   // the solution the solver actually computes.  The log ends showing the full
   // solution as rows of move-buttons, and the cube is solved again.

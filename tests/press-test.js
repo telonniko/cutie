@@ -1,6 +1,7 @@
 /**
  * tests/press-test.js — keyboard-shortcut tests:
- *   - 't' toggles the layer-button drawer open/closed
+ *   - 'c' toggles the control drawer open/closed
+ *     ('t' no longer does anything — the shortcut moved from T to C)
  *   - Alt/Option + face key performs a 180° half turn
  *     (Shift is the prime modifier; Alt is the half-turn modifier)
  */
@@ -35,13 +36,13 @@ function findExecutable() {
   const check = (name, cond, info) => { results.push((cond ? 'PASS' : 'FAIL') + '  ' + name + '  ' + info); };
   // The drawer's open/closed state, read from the tab's aria-expanded attribute.
   const drawerOpen = () => page.evaluate(
-    () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
+    () => document.getElementById('control-drawer-tab').getAttribute('aria-expanded'));
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
   async function resetIdle() {
-    // #btn-reset lives in the face-button drawer: open it first (already open on
+    // #btn-reset lives in the control drawer: open it first (already open on
     // this wide viewport — idempotent, toggles only if currently closed).
     if ((await drawerOpen()) !== 'true') {
-      await page.click('#face-drawer-tab');
+      await page.click('#control-drawer-tab');
       await page.waitForTimeout(400); // let the .3s slide settle
     }
     await page.click('#btn-reset');
@@ -49,16 +50,21 @@ function findExecutable() {
     await page.evaluate(() => window.__RUBIKS__.waitUntilIdle(3000));
   }
 
-  // ---- 1) 't' key toggles the drawer open/closed. --------------------------
-  //    On this wide (1440px) viewport the layer drawer STARTS OPEN, so the first
-  //    't' slides it back and the second slides it out.
+  // ---- 1) 'c' key toggles the drawer open/closed. --------------------------
+  //    On this wide (1440px) viewport the control drawer STARTS OPEN, so the
+  //    first 'c' slides it back and the second slides it out.
   check('drawer starts open (wide viewport)', await drawerOpen() === 'true', await drawerOpen());
+  await page.keyboard.press('c');
+  await page.waitForTimeout(400);
+  check('c key closes drawer', await drawerOpen() === 'false', await drawerOpen());
+  await page.keyboard.press('c');
+  await page.waitForTimeout(400);
+  check('c key re-opens drawer', await drawerOpen() === 'true', await drawerOpen());
+
+  // ---- 1b) 't' no longer toggles the drawer (shortcut moved T -> C). --------
   await page.keyboard.press('t');
   await page.waitForTimeout(400);
-  check('t key closes drawer', await drawerOpen() === 'false', await drawerOpen());
-  await page.keyboard.press('t');
-  await page.waitForTimeout(400);
-  check('t key re-opens drawer', await drawerOpen() === 'true', await drawerOpen());
+  check('t key does nothing', await drawerOpen() === 'true', await drawerOpen());
 
   // ---- 2) Alt/Option + face key performs a 180° half turn. -----------------
   //    Half turns have no on-screen-only keyboard button, so Alt/Option is the
