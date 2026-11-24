@@ -17,7 +17,8 @@
  *      back buffer via gl.readPixels (bypasses the 2D-canvas sync issue).
  *   2. `page.screenshot()` → the DOM UI.
  *   3. Compose: the cube PNG (from step 1, encoded via ImageMagick) is
- *      overlaid on the UI screenshot at the canvas origin (0, 0).
+ *      overlaid on the UI screenshot at the canvas origin (the stage's offset
+ *      from the viewport — (0, 0) when the stage fills the viewport).
  *
  * Output: docs/screenshots/{solved,scrambled,solved-after}.png
  *
@@ -89,10 +90,17 @@ async function main() {
     // 2) Get the DOM UI (canvas region will be dark; we overlay the cube).
     const uiPng = path.join(TMP, name + '.ui.png');
     await page.screenshot({ path: uiPng });
-    // 3) Composite: cube over UI at (0, 0).  `-composite` (IMv7) actually merges
-    // the two-image sequence produced by `-compose over` into ONE output file;
-    // without it magick writes one file per input image (name-0, name-1, …).
-    execFileSync('magick', [uiPng, cubePng, '-compose', 'over', '-gravity', 'NorthWest', '-geometry', '+0+0', '-composite', path.join(OUT, name)]);
+    // 3) Composite: cube over UI at the canvas origin. The canvas is the
+    // stage's full-size backing, so read its rect (the stage's letterbox
+    // offset) — (0, 0) below the stage caps.  `-composite` (IMv7) actually
+    // merges the two-image sequence produced by `-compose over` into ONE
+    // output file; without it magick writes one file per input image
+    // (name-0, name-1, …).
+    const cv = await page.evaluate(() => {
+      const r = document.querySelector('#canvas-wrap canvas').getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y) };
+    });
+    execFileSync('magick', [uiPng, cubePng, '-compose', 'over', '-gravity', 'NorthWest', '-geometry', `+${cv.x}+${cv.y}`, '-composite', path.join(OUT, name)]);
   }
 
   // ---- Drawer state per shot ----------------------------------------------
