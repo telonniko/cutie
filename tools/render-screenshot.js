@@ -90,9 +90,10 @@ async function main() {
     // 2) Get the DOM UI (canvas region will be dark; we overlay the cube).
     const uiPng = path.join(TMP, name + '.ui.png');
     await page.screenshot({ path: uiPng });
-    // 3) Composite: cube over UI at the canvas origin. The canvas is the
-    // stage's full-size backing, so read its rect (the stage's letterbox
-    // offset) — (0, 0) below the stage caps.  `-composite` (IMv7) actually
+    // 3) Composite: cube over UI at the canvas origin. The canvas backs only
+    // the stage's empty rectangle (stage minus the banner / drawer / Move
+    // Log bands), so read its live rect — the letterbox + band offsets.
+    //  `-composite` (IMv7) actually
     // merges the two-image sequence produced by `-compose over` into ONE
     // output file; without it magick writes one file per input image
     // (name-0, name-1, …).

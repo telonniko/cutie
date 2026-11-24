@@ -21,9 +21,10 @@
      1024x1080 so a larger window letterboxes it with the page's own
      background (the body is the same slate-900 as the scene, so the edge is
      invisible). All chrome is anchored INSIDE it (absolute, never fixed) and
-     the WebGL canvas is its full-size backing. overflow hidden clips the
-     closed control panel behind the stage's left edge (the binder tab still
-     peeks in from that edge). --stage-h is the stage-relative unit for
+     the WebGL canvas fills its empty space (see #canvas-wrap below). overflow
+     hidden clips the closed control panel behind the stage's left edge (the
+     binder tab still peeks in from that edge). --stage-h is the stage-relative
+     unit for
      chrome sizing: identical to the viewport below the caps, scaled to the
      stage above them. */
   #stage {
@@ -35,6 +36,13 @@
     overflow: hidden;
     --stage-h: min(100vh, 1080px);
   }
+  /* #canvas-wrap fills the stage's EMPTY space — the stage minus the top
+     banner, the left drawer band, and the bottom Move Log band (each with a
+     16px clearance). The JS in the module below sets its left/top/right/
+     bottom offsets from runtime measurements; inset:0 is the pre-JS base so
+     the canvas starts as the stage's full-size backing. The cube (world
+     origin, the camera's target) is always centered in its canvas, so this
+     also centers the cube in the empty space. */
   #canvas-wrap { position: absolute; inset: 0; }
   /* Stage-relative size caps (45% / 95% of the stage height). Replaces the
      old max-h-[45vh] / max-h-[95vh]: identical below the 1080px cap, scaled
@@ -111,7 +119,8 @@
        the stage the body's slate-900 (== the scene background) shows through,
        so the letterbox is seamless. -->
   <div id="stage">
-    <!-- 3D viewport (the stage's full-size backing) -->
+    <!-- 3D viewport (fills the stage's empty space — see the #canvas-wrap
+         comment in the <style> block above) -->
     <div id="canvas-wrap"></div>
 
   <!-- ======================= Top banner (full-width, top edge) ======================= -->
@@ -1025,7 +1034,141 @@
     controlDrawer.style.setProperty('--drawer-shift', shift + 'px');
     controlDrawer.classList.toggle('drawer-closed', !drawerOpen);
     controlTab.setAttribute('aria-expanded', String(drawerOpen));
+    // The left band (and therefore the canvas rect) depends on the drawer's
+    // position: track it per frame while the slide animates, or re-measure
+    // immediately when the shift was snapped without animation.
+    if (animate) startBandTracking(); else applyCanvasRect();
   }
+  /* ------------------------------------------------------------------------ *
+   *  EMPTY-SPACE CANVAS RECT (the cube is centered in the empty space)        *
+   * ---------------------------------------------------------------------- */
+  // The canvas no longer backs the whole stage: it fills exactly the EMPTY
+  // space — the stage minus three chrome bands, each carrying a 16px
+  // clearance (the cube must never sit under a band):
+  //   TOP    — the banner's actual height (its rect, measured at runtime) + 16
+  //   LEFT   — closed drawer: the binder tab's right edge + 16;
+  //            open drawer:  the panel card's right edge + 16
+  //   BOTTOM — the Move Log's RESERVED height, computed as if it had EXACTLY
+  //            3 button rows (never the dynamic height): the wrapper's pb-3
+  //            bottom margin + the card's header row + 3 rows of move buttons
+  //            with 2px gaps + the log area's py-2 padding + 16.
+  // Every piece is computed from the real DOM/CSS, so the bands stay correct
+  // at all viewport sizes (the bands are the same px below/above the stage
+  // caps, but they are re-measured after every resize and drawer toggle).
+  // The cube lives at the world origin and the camera targets it, so the cube
+  // is always centered in its canvas — sizing the canvas to the empty rect
+  // centers the cube in the empty space. All offsets are stage-relative
+  // (the wrap is absolutely positioned inside #stage).
+  const CLEARANCE = 16;
+  const bannerEl = stage.querySelector('header');
+  const logWrapEl = Array.from(stage.children).find(el => el.contains(document.getElementById('move-log')));
+  const logCardEl = logWrapEl.firstElementChild;
+  const logHeaderEl = logCardEl.firstElementChild;
+  const logAreaEl = document.getElementById('move-log');
+
+  // The Move Log's reserved height as if it had exactly 3 rows of move
+  // buttons, computed from the real DOM/CSS (not the dynamic height).
+  function reservedLogBand() {
+    const cs = el => getComputedStyle(el);
+    const logListEl = document.getElementById('log-list');
+    const gap = parseFloat(cs(logListEl).rowGap) || parseFloat(cs(logListEl).gap) || 0;
+    let rowH;
+    const existing = logListEl.querySelector('.move-btn');
+    if (existing) {
+      rowH = existing.getBoundingClientRect().height;
+    } else {
+      // Empty log: measure a throwaway real button and remove it in the same
+      // tick (it is never painted).
+      const probe = document.createElement('button');
+      probe.type = 'button';
+      probe.className = 'move-btn pending';
+      probe.textContent = 'U';
+      logListEl.appendChild(probe);
+      rowH = probe.getBoundingClientRect().height;
+      probe.remove();
+    }
+    return (
+      parseFloat(cs(logWrapEl).paddingBottom)                 // wrapper pb-3 margin
+      + logHeaderEl.getBoundingClientRect().height             // the card's header row
+      + 3 * rowH + 2 * gap                                     // 3 rows + 2 gaps
+      + parseFloat(cs(logAreaEl).paddingTop)                   // log area py-2
+      + parseFloat(cs(logAreaEl).paddingBottom)
+      + CLEARANCE                                              // clearance
+    );
+  }
+
+  // Size the canvas (wrap) to the empty rect and resize the renderer + camera
+  // to match. `leftBandOverride` lets the drawer-slide tracking feed a
+  // per-frame left band; without it the band is measured from the current
+  // drawer state (closed: the tab's right edge; open: the panel card's right
+  // edge).
+  function applyCanvasRect(leftBandOverride) {
+    const sr = stage.getBoundingClientRect();
+    const topBand = (bannerEl.getBoundingClientRect().bottom - sr.top) + CLEARANCE;
+    const bottomBand = reservedLogBand();
+    let leftBand;
+    if (leftBandOverride != null) {
+      leftBand = leftBandOverride;
+    } else {
+      const edge = drawerOpen
+        ? controlDrawer.children[0].getBoundingClientRect().right
+        : controlTab.getBoundingClientRect().right;
+      leftBand = (edge - sr.left) + CLEARANCE;
+    }
+    wrap.style.left = Math.max(0, leftBand) + 'px';
+    wrap.style.top = topBand + 'px';
+    wrap.style.right = '0px';
+    wrap.style.bottom = bottomBand + 'px';
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    if (w > 0 && h > 0) {
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+  }
+  // Initial size: the drawer's exact closed shift is measured later by
+  // armControlDrawer (on load), which re-measures the bands; the pre-arm tab
+  // position (CSS default shift) is off-stage, so the clamped band of 0 keeps
+  // the canvas inside the stage meanwhile.
+  applyCanvasRect();
+
+  // While the drawer slides (~0.3s CSS transition) the left band changes, so
+  // the canvas is re-sized PER FRAME to keep the cube sliding with the panel
+  // instead of jumping when the slide ends. The per-frame band is a linear
+  // blend of the two rest-state bands (closed: tab edge + 16; open: card edge
+  // + 16), parameterised by the panel card's measured progress through the
+  // slide — the cube's position is thus a direct function of the panel's
+  // position. When the slide settles, tracking stops and the canvas snaps to
+  // the exactly-measured band.
+  let bandTrackRAF = 0;
+  function startBandTracking() {
+    cancelAnimationFrame(bandTrackRAF);
+    const card = controlDrawer.children[0];
+    const shiftPx = Math.abs(parseFloat(controlDrawer.style.getPropertyValue('--drawer-shift')) || 0);
+    if (!shiftPx) { applyCanvasRect(); return; } // no measured shift: nothing to track
+    // The tab's right edge (stage-relative) when closed: the card's right edge
+    // then sits exactly on the stage's left edge, so it is just gap + tab width
+    // (transform-invariant, both elements share the sliding parent).
+    const tabOffset = controlTab.getBoundingClientRect().right - card.getBoundingClientRect().right;
+    const closedBand = tabOffset + CLEARANCE;
+    const openBand = shiftPx + CLEARANCE;
+    const targetR = drawerOpen ? shiftPx : 0;
+    let still = 0, total = 0;
+    const step = () => {
+      bandTrackRAF = 0;
+      const sr = stage.getBoundingClientRect();
+      const cardR = card.getBoundingClientRect().right - sr.left;
+      const p = THREE.MathUtils.clamp(cardR / shiftPx, 0, 1);
+      applyCanvasRect(closedBand + (openBand - closedBand) * p);
+      if (Math.abs(cardR - targetR) < 0.5) {
+        if (++still >= 2) { applyCanvasRect(); return; }  // settled: exact band
+      } else still = 0;
+      if (++total > 180) { applyCanvasRect(); return; }   // ~3s safety net
+      bandTrackRAF = requestAnimationFrame(step);
+    };
+    bandTrackRAF = requestAnimationFrame(step);
+  }
+
   function toggleDrawer() { drawerOpen = !drawerOpen; applyShift(true); }
   // Close the drawer (if open), sliding the panel off the left edge.
   function closeControlDrawer() { if (drawerOpen) { drawerOpen = false; applyShift(true); } }
@@ -1249,12 +1392,10 @@
   }
 
   addEventListener('resize', () => {
-    // Re-size to the STAGE (CSS recomputes its min() caps on window resize),
-    // then re-measure the drawer's closed shift: it depends on the stage's
-    // left edge, which moves as the letterbox grows/shrinks.
-    camera.aspect = stage.clientWidth / stage.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(stage.clientWidth, stage.clientHeight);
+    // Re-measure the empty-space bands (the stage's letterbox offset moves as
+    // CSS recomputes its min() caps) and re-snap the drawer's closed shift:
+    // it depends on the stage's left edge. applyCanvasRect() inside re-sizes
+    // the renderer + camera to the new empty rect.
     applyShift(false);
   });
 
@@ -1332,16 +1473,17 @@
   }
 
   // Force the renderer to a specific pixel ratio and rescale the canvas to the
-  // current STAGE size. Used by the screenshot harness to pin devicePixelRatio
-  // to 1 so the returned pixel buffer maps 1:1 to the stage.
+  // current EMPTY-SPACE rect. Used by the screenshot harness to pin
+  // devicePixelRatio to 1 so the returned pixel buffer maps 1:1 to the canvas.
   function setPixelRatio(pr) {
     devicePixelRatio = pr;
     renderer.setPixelRatio(pr);
     const c = renderer.domElement;
     c.style.width = '100%';
     c.style.height = '100%';
-    renderer.setSize(stage.clientWidth, stage.clientHeight, false);
-    camera.aspect = stage.clientWidth / stage.clientHeight;
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
 
@@ -1357,6 +1499,26 @@
     // projection without reaching into module scope.
     getSpherical: () => ({ theta: controls.spherical.theta, phi: controls.spherical.phi, radius: controls.spherical.radius, thetaTarget: controls.thetaTarget, phiTarget: controls.phiTarget, radiusTarget: controls.radiusTarget }),
     projectWorld: (x = 0, y = 0, z = 0) => { const p = new THREE.Vector3(x, y, z).project(camera); return { x: p.x, y: p.y }; },
+    // The current empty-space canvas rect (stage-relative) and the measured
+    // bands that produced it (top: banner + 16; left: tab/card edge + 16;
+    // bottom: the reserved 3-row Move Log height).
+    canvasBands: () => {
+      const sr = stage.getBoundingClientRect();
+      const cr = renderer.domElement.getBoundingClientRect();
+      const edge = drawerOpen
+        ? controlDrawer.children[0].getBoundingClientRect().right
+        : controlTab.getBoundingClientRect().right;
+      return {
+        left: cr.left - sr.left, top: cr.top - sr.top,
+        right: sr.right - cr.right, bottom: sr.bottom - cr.bottom,
+        w: cr.width, h: cr.height,
+        bands: {
+          top: (bannerEl.getBoundingClientRect().bottom - sr.top) + CLEARANCE,
+          left: Math.max(0, (edge - sr.left) + CLEARANCE),
+          bottom: reservedLogBand(),
+        },
+      };
+    },
     cubeBox: () => { const b = new THREE.Box3().setFromObject(cubeGroup); return { min: [b.min.x, b.min.y, b.min.z], max: [b.max.x, b.max.y, b.max.z] }; },
 
     // Render a frame with a transparent background and return its pixels as raw
