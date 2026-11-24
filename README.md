@@ -62,6 +62,8 @@ The cube itself is **view-only** — turns come from the **face buttons** and
 **keyboard shortcuts** (below), not from clicking the cube.
 
 ### Top bar
+- A **full-width banner** fixed to the top edge — one continuous dark strip, only
+  a hair lighter than the slate-950 page background — holding both items.
 - **Cutie** logo (left).
 - **Status pill** (right): a colored dot + label showing the current state
   (**Solved**, **Scrambled**, **Turning…**, **Solving…**) and a live **Moves**

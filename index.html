@@ -84,25 +84,30 @@
   <!-- 3D viewport -->
   <div id="canvas-wrap"></div>
 
-  <!-- ======================= Top bar ======================= -->
-  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none">
-    <div class="flex items-center justify-between px-4 py-3">
-      <div class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
-        <div class="flex items-center gap-3">
-          <div class="grid grid-cols-3 gap-0.5">
-            <span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-yellow-400"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-blue-500"></span>
-            <span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-orange-500"></span>
-            <span class="w-2.5 h-2.5 rounded-[3px] bg-red-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span>
-          </div>
-          <div>
-            <h1 class="text-sm font-semibold tracking-wide">Cutie</h1>
-            <p class="text-[11px] text-slate-400 -mt-0.5">3D Rubik's Cube Solver</p>
-          </div>
+  <!-- ======================= Top banner (full-width, top edge) ======================= -->
+  <!-- One continuous edge-to-edge strip fixed to the top edge, overlaid on the
+       full-viewport canvas (no top padding added to the canvas). Its dark
+       background is only a hair lighter than the slate-950 page background — a
+       ~3% white wash over the same base — so it reads as a banner, not a
+       separate card. Like the bottom Move Log strip, the outer element is
+       pointer-events-none (the canvas stays draggable beneath it) while the
+       title block and status pill inside are pointer-events-auto. -->
+  <header class="fixed inset-x-0 top-0 z-20 pointer-events-none bg-white/[0.03]">
+    <div class="flex items-center justify-between gap-3 px-4 py-2">
+      <div class="pointer-events-auto flex min-w-0 items-center gap-3">
+        <div class="grid shrink-0 grid-cols-3 gap-0.5">
+          <span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-yellow-400"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-blue-500"></span>
+          <span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-orange-500"></span>
+          <span class="w-2.5 h-2.5 rounded-[3px] bg-red-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-sm font-semibold tracking-wide">Cutie</h1>
+          <p class="truncate text-[11px] text-slate-400 -mt-0.5">3D Rubik's Cube Solver</p>
         </div>
       </div>
 
       <!-- Status indicator -->
-      <div id="status-pill" class="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
+      <div id="status-pill" class="pointer-events-auto flex shrink-0 items-center gap-2 rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 px-4 py-2 shadow-lg">
         <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
         <span id="status-text" class="text-sm font-medium">Solved</span>
         <span class="mx-1 h-4 w-px bg-white/10"></span>
