@@ -193,11 +193,12 @@
     </div>
   </div>
 
-  <!-- ======================= Solver loading toast ======================= -->
-  <div id="solver-toast" class="fixed left-1/2 bottom-6 -translate-x-1/2 z-30 hidden">
-    <div class="flex items-center gap-2 rounded-xl bg-slate-900/90 backdrop-blur-md ring-1 ring-white/10 px-4 py-2.5 shadow-2xl">
-      <div class="w-6 h-6 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-      <span class="text-xl text-slate-200">Warming up the solver…</span>
+  <!-- ======================= Solver loading toast =======================
+       Full-viewport overlay, flex-centered, above canvas/drawers (z-50). -->
+  <div id="solver-toast" class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none hidden">
+    <div class="flex items-center gap-4 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-8 py-6 shadow-2xl">
+      <div class="w-12 h-12 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-[2.5rem] text-slate-200">Waking up the ChipGPT-munk...</span>
     </div>
   </div>
 
