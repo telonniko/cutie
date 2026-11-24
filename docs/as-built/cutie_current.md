@@ -211,7 +211,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   that **hugs its content** (up to ~12 buttons wide).
 - **Header**: "Move Log" title + a live **move-count** (e.g. `12 moves`).
 - **Move Log**: a row of move-buttons that **wraps**, one per move token, each a
-  **fixed 36px wide** (`2.25rem`, flex `0 0 auto` — never a fluid grid
+  **fixed 32px wide** (`2rem`, flex `0 0 auto` — never a fluid grid
   fraction), **up to 12 per row**, centered. The list's max width is 12 buttons
   + 11 gaps, so on narrow screens fewer than 12 fit per row and it wraps — no
   horizontal overflow. Three visual states driven by the **cursor** — **past**
@@ -242,11 +242,12 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   or pointerdown** (via a capture-phase `document` listener that fires before the app's
   handlers), then removes itself from the DOM. Respects
   `prefers-reduced-motion: reduce` — skips the fade animation and removes immediately.
-- **Attribution (credit card)**: a small bottom-left line, "created with
-  qwen3.8:27b-mlx-4bit"; it stays visible at all times and is NOT an onboarding
-  hint (not dismissed on first interaction).
-- **Solver toast**: centered bottom toast with spinner ("Warming up the
-  solver…"), also reused for error messages, auto-hiding after ~4s.
+- **Attribution (credit line)**: a small bottom-left line, "created with
+  qwen3.8:27b-mlx-4bit"; it is in the first-interaction dismiss list and fades
+  away (and is removed from the DOM) at the exact moment the "Drag to orbit"
+  hint dismisses.
+- **Solver toast**: a viewport-centered dark card with spinner ("Waking up the
+  ChipGPT-munk..."), also reused for error messages, auto-hiding after ~4s.
 
 ---
 
