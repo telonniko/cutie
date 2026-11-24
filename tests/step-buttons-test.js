@@ -68,7 +68,7 @@ function findExecutable() {
   const stepBwd = page.locator('#btn-stepbwd');
   const stepFwd = page.locator('#btn-stepfwd');
 
-  // Run everything fast so the (random 18-35 move) scramble batch drains quickly
+  // Run everything fast so the (random 18-24 move) scramble batch drains quickly
   // within the wait timeouts. The speed slider drives state.speed (0.3x-3x).
   const setSpeed = async (v) => {
     await page.evaluate((val) => {

@@ -77,7 +77,7 @@ hugs its content and the canvas/cube are untouched:
 - **Header** — "Move Log" title plus a live **move-count** (e.g. `12 moves`).
 - **Move buttons** — the executed moves shown as a **row of move-buttons that
   wraps**, one per token (`R`, `U'`, `F2`, …), styled to match the face buttons.
-  Each button is a **fixed 40px wide**, so the layout is identical at every
+  Each button is a **fixed 32px wide**, so the layout is identical at every
   screen size: **up to 12 per row**, wrapping to additional rows as moves are
   added, centered. On narrow screens fewer than 12 fit per row and it simply
   wraps — no horizontal overflow.

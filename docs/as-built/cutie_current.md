@@ -129,7 +129,7 @@ columns):
 
 | Button | Action |
 |--------|--------|
-| **Scramble** | Random 18–35 move scramble, no two consecutive same-face, animated. Clears the log first. |
+| **Scramble** | Random 18–24 move scramble, no two consecutive same-face, animated. Clears the log first. |
 | **Solve** | Clear the log, then compute the solution via cubejs from the cube's current state and animate it step-by-step. |
 | **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. **Disabled at the start of the log** (cursor 0, nothing applied to undo). |
 | **Step →** | Advance the current step one move (replay the next move in the log) and stop. **Disabled at the end of the log** (cursor == log length, nothing future to replay). |
@@ -211,7 +211,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   that **hugs its content** (up to ~12 buttons wide).
 - **Header**: "Move Log" title + a live **move-count** (e.g. `12 moves`).
 - **Move Log**: a row of move-buttons that **wraps**, one per move token, each a
-  **fixed 40px wide** (`2.5rem`, flex `0 0 auto` — never a fluid grid
+  **fixed 32px wide** (`2rem`, flex `0 0 auto` — never a fluid grid
   fraction), **up to 12 per row**, centered. The list's max width is 12 buttons
   + 11 gaps, so on narrow screens fewer than 12 fit per row and it wraps — no
   horizontal overflow. Three visual states driven by the **cursor** — **past**
@@ -238,15 +238,16 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Misc
 - **Drag-to-rotate hint**: a small pill, centered horizontally near the top
-  (`top-17`), "Drag to orbit · Scroll/Pinch to zoom"; it fades out on the **first keypress
+  (`top-17`), "Drag to orbit · Scroll/Pinch to zoom" — single line, `whitespace-nowrap` so it never wraps (even at narrow phone widths); it fades out on the **first keypress
   or pointerdown** (via a capture-phase `document` listener that fires before the app's
   handlers), then removes itself from the DOM. Respects
   `prefers-reduced-motion: reduce` — skips the fade animation and removes immediately.
-- **Attribution (credit card)**: a small bottom-left line, "created with
-  qwen3.8:27b-mlx-4bit"; it stays visible at all times and is NOT an onboarding
-  hint (not dismissed on first interaction).
-- **Solver toast**: centered bottom toast with spinner ("Warming up the
-  solver…"), also reused for error messages, auto-hiding after ~4s.
+- **Attribution (credit line)**: a small bottom-left line, "created with
+  qwen3.8:27b-mlx-4bit"; it is in the first-interaction dismiss list and fades
+  away (and is removed from the DOM) at the exact moment the "Drag to orbit"
+  hint dismisses.
+- **Solver toast**: a viewport-centered dark card with spinner ("Waking up the
+  ChipGPT-munk..."), also reused for error messages, auto-hiding after ~4s.
 
 ---
 
@@ -365,7 +366,7 @@ drains (`settle` refreshes them once). Checks, in order:
   live; walked all the way back, `← Step` disables again.
 - Disabled flags are read from the buttons' `disabled` DOM property (regardless
   of the control drawer's state), and the test runs at 3× speed so the
-  random 18–35 move scramble drains within its wait timeout.
+  random 18–24 move scramble drains within its wait timeout.
 - Run: `node tests/step-buttons-test.js` (`npm run test:step`).
 
 ### `tools/render-screenshot.js`
