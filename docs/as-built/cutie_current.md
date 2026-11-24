@@ -189,7 +189,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Top bar
 - **Full-width top banner**: one continuous edge-to-edge strip fixed to the top
-  edge, dark and only a hair lighter than the slate-950 page background (~3% white
+  edge, dark and only a hair lighter than the visible slate-900 scene background (~3% white
   wash); the outer strip is pointer-events-none so the canvas stays draggable
   beneath it, and it overlays the full-viewport canvas (no top padding added).
 - **Left**: Cutie logo — a small 3×3 grid of colored squares next to the title
