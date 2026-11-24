@@ -129,7 +129,7 @@ columns):
 
 | Button | Action |
 |--------|--------|
-| **Scramble** | Random 18–35 move scramble, no two consecutive same-face, animated. Clears the log first. |
+| **Scramble** | Random 18–24 move scramble, no two consecutive same-face, animated. Clears the log first. |
 | **Solve** | Clear the log, then compute the solution via cubejs from the cube's current state and animate it step-by-step. |
 | **← Step** | Step the current position back one move (animate the inverse); the move stays in the log to replay. **Disabled at the start of the log** (cursor 0, nothing applied to undo). |
 | **Step →** | Advance the current step one move (replay the next move in the log) and stop. **Disabled at the end of the log** (cursor == log length, nothing future to replay). |
@@ -238,7 +238,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Misc
 - **Drag-to-rotate hint**: a small pill, centered horizontally near the top
-  (`top-17`), "Drag to orbit · Scroll/Pinch to zoom"; it fades out on the **first keypress
+  (`top-17`), "Drag to orbit · Scroll/Pinch to zoom" — single line, `whitespace-nowrap` so it never wraps (even at narrow phone widths); it fades out on the **first keypress
   or pointerdown** (via a capture-phase `document` listener that fires before the app's
   handlers), then removes itself from the DOM. Respects
   `prefers-reduced-motion: reduce` — skips the fade animation and removes immediately.
@@ -365,7 +365,7 @@ drains (`settle` refreshes them once). Checks, in order:
   live; walked all the way back, `← Step` disables again.
 - Disabled flags are read from the buttons' `disabled` DOM property (regardless
   of the control drawer's state), and the test runs at 3× speed so the
-  random 18–35 move scramble drains within its wait timeout.
+  random 18–24 move scramble drains within its wait timeout.
 - Run: `node tests/step-buttons-test.js` (`npm run test:step`).
 
 ### `tools/render-screenshot.js`

@@ -121,7 +121,7 @@ async function main() {
 
   // ---- 2. Scrambled (drive the real Scramble button; control drawer open) ----
   // Clicking the button is what a user does, so the shot reflects the current
-  // scramble() (a random 18–35 move sequence) rather than a hard-coded one.  Wait
+  // scramble() (a random 18–24 move sequence) rather than a hard-coded one.  Wait
   // for the animation to finish, then render the log with every move as "done" so
   // the shot shows the full scramble as rows of move-buttons.
   await setDrawers(true);

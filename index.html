@@ -53,7 +53,7 @@
   .drawer-closed { transform: translateX(var(--drawer-shift)); }
   /* The tab reads vertically, like a binder tab on the panel's right edge. */
   .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
-  /* Move-log buttons: fixed 36px-wide tokens that wrap (up to 12 per row),
+  /* Move-log buttons: fixed 32px-wide tokens that wrap (up to 12 per row),
      styled to match the face buttons. The width is fixed — never a fluid grid
      fraction — so the wrap layout is identical at every screen size. Three
      visual states driven by state.playIndex:
@@ -63,7 +63,7 @@
   .move-btn {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 13px; font-weight: 600; line-height: 1;
-    width: 2.25rem; flex: 0 0 auto; /* fixed 36px: never stretches, always wraps */
+    width: 2rem; flex: 0 0 auto; /* fixed 32px: never stretches, always wraps */
     padding: 8px 0; text-align: center;
     border-radius: 8px; user-select: none;
     transition: background-color .12s ease, color .12s ease,
@@ -122,7 +122,7 @@
        wrapper is a full-width, bottom-anchored fixed strip that centers the
        card and lets pointer events pass through everywhere except the card
        itself (pointer-events-auto). The card hugs its content (up to 12 fixed
-       36px buttons per row) and caps at ~45vh: beyond that the log scrolls
+       32px buttons per row) and caps at ~45vh: beyond that the log scrolls
        internally (.scroll-thin) and the current move auto-scrolls into view.
        It overlays the full-viewport canvas with a backdrop blur — the cube
        and camera are untouched. -->
@@ -136,9 +136,9 @@
         <p id="log-empty" class="text-slate-500 text-xs leading-relaxed px-1 py-1">
           No moves yet. Use the buttons or keyboard to turn faces, then <b class="text-slate-300">Solve</b> to watch it come back.
         </p>
-        <!-- Fixed 36px buttons, up to 12 per row, wrapping to more rows and
-             centered; the max-width cap is 12 buttons + 11 gaps (0.375rem each). -->
-        <div id="log-list" class="flex flex-wrap justify-center gap-1.5 max-w-[calc(12*2.25rem+11*0.375rem)]"></div>
+        <!-- Fixed 32px buttons, up to 12 per row, wrapping to more rows and
+             centered; the max-width cap is 12 buttons + 11 gaps (0.125rem each). -->
+        <div id="log-list" class="flex flex-wrap justify-center gap-0.5 max-w-[calc(12*2rem+11*0.125rem)]"></div>
       </div>
     </section>
   </div>
@@ -210,15 +210,15 @@
   <!-- ======================= Solver loading toast =======================
        Full-viewport overlay, flex-centered, above canvas/drawers (z-50). -->
   <div id="solver-toast" class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none hidden">
-    <div class="flex items-center gap-4 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-8 py-6 shadow-2xl">
-      <div class="w-12 h-12 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-      <span class="text-[2.5rem] text-slate-200">Waking up the ChipGPT-munk...</span>
+    <div class="flex items-center gap-3 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-6 py-4 shadow-2xl">
+      <div class="w-9 h-9 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-[1.875rem] text-slate-200">Waking up the ChipGPT-munk...</span>
     </div>
   </div>
 
   <!-- Drag-to-rotate hint on the canvas -->
   <div id="drag-hint" class="fixed left-1/2 -translate-x-1/2 top-17 z-20 pointer-events-none">
-    <div class="rounded-xl bg-slate-900/60 backdrop-blur-sm ring-1 ring-white/10 px-3 py-1.5 text-sm text-slate-400">
+    <div class="rounded-xl bg-slate-900/60 backdrop-blur-sm ring-1 ring-white/10 px-3 py-1.5 text-sm text-slate-400 whitespace-nowrap">
       Drag to orbit · Scroll/Pinch to zoom
     </div>
   </div>
@@ -828,7 +828,7 @@
     const mods = ['', '2', "'"];
     const seq = [];
     let last = null;
-    const N = 18 + Math.floor(Math.random() * (35 - 18 + 1)); // random 18..35 inclusive
+    const N = 18 + Math.floor(Math.random() * (24 - 18 + 1)); // random 18..24 inclusive
     for (let i = 0; i < N; i++) {
       let f;
       do { f = faces[Math.floor(Math.random()*6)]; } while (f === last);

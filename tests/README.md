@@ -151,7 +151,7 @@ once when it drains. Checks, in order:
 
 The disabled flags are read straight from the buttons' `disabled` DOM property
 (works whether or not the control drawer is open), and the test runs at 3× speed
-so the random 18–35 move scramble drains within its wait timeout.
+so the random 18–24 move scramble drains within its wait timeout.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.

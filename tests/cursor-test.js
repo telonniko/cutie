@@ -103,7 +103,7 @@ const app = {
 console.log('Scenario A: scramble, step back 3, solve from the stepped state');
 app.scramble();
 const nA = app.moves.length;
-assert(nA >= 18 && nA <= 35, `scramble applied a random 18..35 moves (got ${nA})`);
+assert(nA >= 18 && nA <= 24, `scramble applied a random 18..24 moves (got ${nA})`);
 assert(app.cursor === nA, 'cursor == move count after scramble');
 app.stepBackward(); app.stepBackward(); app.stepBackward();
 assert(app.cursor === nA - 3, `cursor stepped back to ${nA - 3} (got ${app.cursor})`);
