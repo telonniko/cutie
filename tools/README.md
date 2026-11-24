@@ -44,7 +44,7 @@ compositing the cube's GL frame over the DOM UI:
 3. Compose: the cube PNG is overlaid on the UI at the canvas origin via
    ImageMagick.
 
-Each frame is captured with **the face drawer open** and the always-visible
+Each frame is captured with **the control drawer open** and the always-visible
 **Move Log panel** at the bottom, the cube in the gap between them. The scrambled and solved-after frames are produced by clicking the
 **real Scramble and Solve buttons** and waiting for each animation to finish — so
 the captures always reflect the current app (including the randomized scramble

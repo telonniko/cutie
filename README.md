@@ -87,26 +87,28 @@ hugs its content and the canvas/cube are untouched:
   the current step show as done, moves after it as pending — and the current
   button auto-scrolls into view.
 
-  (The speed slider and the primary-action buttons live in the face-button
+  (The speed slider and the primary-action buttons live in the control
   drawer on the left — see below.)
 
-### Face buttons (left edge) — a slide-out drawer
-The face buttons live in a panel that **hides behind a tab** on the left edge,
+### Control panel (left edge) — a slide-out drawer
+The control panel — the face buttons, the animation-speed slider, and the five
+action buttons — lives in a panel that **hides behind a tab** on the left edge,
 so the cube viewport stays clear. It **opens at startup on a wide screen and
 stays closed on a narrow one**, and auto-closes when a Scramble/Solve would
-slide it onto the cube. The tab is a vertical **"Turn a
-layer"** handle (like a tab in a binder) that sits on the panel's **right**
+slide it onto the cube. The tab is a vertical **"Control
+Panel"** handle (like a tab in a binder) that sits on the panel's **right**
 edge; it is always visible, and the panel itself slides in from the left when
 opened:
 
-- **Tap the tab** to slide the panel out and reveal the buttons; **tap it again**
+- **Tap the tab** to slide the panel out and reveal the controls; **tap it again**
   to slide it back. The toggle is a `click` on a real `<button>`, so it works
   with a tap on iPad with no keyboard.
-- **`T`** toggles the same drawer from the keyboard. (Tab is not used: it
+- **`C`** toggles the same drawer from the keyboard. (Tab is not used: it
   drives browser focus navigation, and the primary action buttons are focusable.)
 
 When open, the panel is one tall card that stacks, top to bottom: the three
-vertical columns of face buttons, the animation-speed slider, and the five
+vertical columns of face buttons (each column labelled **CW** / **CCW** /
+**Half** above its buttons), the animation-speed slider, and the five
 primary-action buttons in an inner bordered sub-panel. Each face button is
 **one fixed move**, so a tap always does exactly one thing with no modifier —
 this matters on touch devices (e.g. iPad) that have no Shift key. Each button
@@ -161,7 +163,10 @@ half turn) still work as shortcuts.
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U D L R F B` | Turn that face counter-clockwise |
 | `Alt` + `U D L R F B` | Turn that face 180° (half turn) |
-| `T` | Toggle the face-button (layer) drawer open / closed |
+| `C` | Toggle the control panel drawer open / closed |
+
+(`C` was previously the removed controls-drawer key — it is free again. `T` no
+longer toggles the drawer.)
 
 ---
 

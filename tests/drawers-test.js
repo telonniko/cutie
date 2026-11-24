@@ -1,6 +1,6 @@
 /**
  * tests/drawers-test.js — auto-close-on-overlap tests for the slide-out
- * face-button drawer (left edge):
+ * control drawer (left edge):
  *
  *   When the drawer is open AND its panel (including the tab, read from the
  *   drawer's own bounding box) geometrically overlaps the cube's on-screen area,
@@ -50,9 +50,9 @@ const scenarios = [
   { w: 1600, h: 900,  btn: '#btn-solve',    label: 'Solve',    expectClose: false, desc: 'wide'   },
 ];
 
-// The single slide-out drawer: the left-edge face-button drawer.
+// The single slide-out drawer: the left-edge control drawer.
 const DRAWERS = [
-  { tab: 'face-drawer-tab', panel: 'face-drawer', name: 'face' },
+  { tab: 'control-drawer-tab', panel: 'control-drawer', name: 'control' },
 ];
 
 (async () => {
@@ -97,7 +97,7 @@ const DRAWERS = [
       }
     }
     const openNow = await Promise.all(DRAWERS.map(d => openOf(d.tab)));
-    check(tag(s) + s.label + ' face drawer open before action', openNow.every(o => o === 'true'),
+    check(tag(s) + s.label + ' control drawer open before action', openNow.every(o => o === 'true'),
       JSON.stringify(openNow));
     if (!openNow.every(o => o === 'true')) { await page.close(); continue; }
 

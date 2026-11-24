@@ -63,19 +63,19 @@ const stateFor = (wrap, f) => (page) =>
     (w) => Array.from(document.querySelectorAll('#' + w + ' button')).map(b => b.textContent).join(' '), wrap);
   // The drawer's open/closed state, read from the tab's aria-expanded attribute.
   const drawerOpen = () => page.evaluate(
-    () => document.getElementById('face-drawer-tab').getAttribute('aria-expanded'));
+    () => document.getElementById('control-drawer-tab').getAttribute('aria-expanded'));
 
   // ---- 1) The drawer toggles via the tab (a real click/tap). ---------------
   //    Runs first: if the toggle is broken, the button tests below are moot.
-  //    On this wide (1440px) viewport the layer drawer STARTS OPEN (the screen
+  //    On this wide (1440px) viewport the control drawer STARTS OPEN (the screen
   //    fits the drawer + the cube), so tap the tab to slide it back, then tap
   //    again to slide it out. We leave it OPEN for the button-interaction tests,
   //    because the buttons sit off-screen while the drawer is closed.
   check('drawer starts open (wide viewport)', await drawerOpen() === 'true', await drawerOpen());
-  await page.click('#face-drawer-tab');
+  await page.click('#control-drawer-tab');
   await page.waitForTimeout(400);                 // let the .3s slide settle
   check('tab click closes drawer', await drawerOpen() === 'false', await drawerOpen());
-  await page.click('#face-drawer-tab');
+  await page.click('#control-drawer-tab');
   await page.waitForTimeout(400);
   check('tab click re-opens drawer', await drawerOpen() === 'true', await drawerOpen());
 
@@ -127,10 +127,10 @@ const stateFor = (wrap, f) => (page) =>
   const isSolved = () => page.evaluate(() => window.__RUBIKS__.isSolved());
   // Reset to a known solved state.
   async function resetIdle() {
-    // #btn-reset lives in the face-button drawer: open it first (already open on
+    // #btn-reset lives in the control drawer: open it first (already open on
     // this wide viewport — idempotent, toggles only if currently closed).
     if ((await drawerOpen()) !== 'true') {
-      await page.click('#face-drawer-tab');
+      await page.click('#control-drawer-tab');
       await page.waitForTimeout(400); // let the .3s slide settle
     }
     await page.click('#btn-reset');

@@ -81,20 +81,22 @@ Standard **Singmaster notation**: `U D L R F B`, `'` (counter-clockwise),
 
 ## 4. User Interactions & Controls
 
-### Face buttons (left edge) — a slide-out drawer
-The face buttons live in a **panel that hides behind a tab** on the left edge, so
-the viewport stays clear. The tab is a vertical **"Turn a layer"** handle (like a
+### Control panel (left edge) — a slide-out drawer
+The control panel — the face buttons, the animation-speed slider, and the five
+action buttons — lives in a **panel that hides behind a tab** on the left edge, so
+the viewport stays clear. The tab is a vertical **"Control Panel"** handle (like a
 binder tab) on the panel's **right** edge; it is always visible, and the panel
 slides in from the left when opened:
 
 - **Tap the tab** to slide the panel out; **tap it again** to slide it back. The
   toggle is a `click` on a real `<button>`, so it works with a tap on iPad with
-  no keyboard. **`T`** toggles the same drawer from the keyboard.
+  no keyboard. **`C`** toggles the same drawer from the keyboard.
 - **Tab is not the shortcut**: it drives browser focus navigation and the primary
-  action buttons are focusable, so `T` is used instead.
+  action buttons are focusable, so `C` is used instead.
 
 When open, the panel is **one tall bordered card** that stacks (top to bottom)
-the three face-button columns, a divider, the **Animation-speed slider** (see
+the three face-button columns (each column labelled **CW** / **CCW** / **Half**
+above its buttons), a divider, the **Animation-speed slider** (see
 below), another divider, and the five **primary-action buttons** (Scramble /
 Solve / ← Step / Step → / Reset) in an **inner bordered sub-panel**. The card's
 width stays driven by the face columns; the slider and the button sub-panel
@@ -120,8 +122,8 @@ The face **keys** (`U D L R F B`, `Shift` + a face key for the prime, `Alt` /
 `Option` + a face key for the 180° half turn) still work as keyboard shortcuts
 on desktop.
 
-### Primary actions (left panel, in the face-button drawer)
-The five primary-action buttons live at the bottom of the left face-button
+### Primary actions (left panel, in the control drawer)
+The five primary-action buttons live at the bottom of the left control
 drawer, in an inner bordered sub-panel (2-column grid; Reset spans both
 columns):
 
@@ -174,7 +176,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   state and refresh just once at the end — no flicker.
 
 ### Animation speed slider
-- Lives in the **left face-button drawer**, between the face columns and the
+- Lives in the **left control drawer**, between the face columns and the
   action-button sub-panel.
 - Range slider (0.3–3, step 0.1, default 1.0) with "Slow"/"Fast" labels.
   Displayed as e.g. `1.0×`.
@@ -221,18 +223,18 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   counter shows the number of moves actually applied (the cursor); the panel's
   header count shows the total moves in the log.
 
-### Face buttons panel (left edge)
+### Control panel (left edge)
 - A **slide-out drawer**: it **opens at startup on a wide screen and stays closed
   on a narrow one**, and auto-closes when a Scramble/Solve would slide it onto
   the cube. While closed,
-  only a vertical "Turn a layer" tab is visible on the panel's right edge. Tapping
-  the tab (or pressing `T`) slides the panel out; tapping again slides it back. The
+  only a vertical "Control Panel" tab is visible on the panel's right edge. Tapping
+  the tab (or pressing `C`) slides the panel out; tapping again slides it back. The
   tab is the rightmost child, so hiding the panel (sliding it left) leaves the tab
   on screen.
 - Glassy panel: ONE tall bordered card stacking the three button columns
-  (clockwise quarter, counter-clockwise quarter, half), the Animation-speed
+  (each labelled CW / CCW / Half above its buttons), the Animation-speed
   slider, and the five action buttons in an inner bordered sub-panel. No top
-  label — the tab *is* the "Turn a layer" label.
+  label — the tab *is* the "Control Panel" label.
 
 ### Misc
 - **Drag-to-rotate hint**: a small pill, centered horizontally near the top
@@ -260,7 +262,10 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 | `U` `D` `L` `R` `F` `B` | Turn that face clockwise |
 | `Shift` + `U` `D` `L` `R` `F` `B` | Turn that face counter-clockwise |
 | `Alt` + `U` `D` `L` `R` `F` `B` | Turn that face 180° (half turn) |
-| `T` | Toggle the face-button (layer) drawer open / closed |
+| `C` | Toggle the control panel drawer open / closed |
+
+(`C` was previously the removed controls-drawer key — it is free again. `T` no
+longer toggles the drawer.)
 
 Face-turn keys are matched via `e.code` (physical key, e.g. `KeyU`), not
 `e.key` (composed character).  On macOS `Option+U` sets `e.key` to the
@@ -316,7 +321,7 @@ moves and appending the solution. Run: `node tests/cursor-test.js`
 (`npm run verify:cursor`).
 
 ### `tests/drawers-test.js`
-Playwright tests for the slide-out **face-button drawer's** auto-close-on-overlap
+Playwright tests for the slide-out **control drawer's** auto-close-on-overlap
 and width-dependent startup: a narrow viewport starts it **closed** (the panel
 would cover the cube) while a wide one starts it **open**; the test opens the
 drawer if it started closed, clicks **Scramble**/**Solve**, and reads the tab's
@@ -326,7 +331,7 @@ stays open when it doesn't. Run: `node tests/drawers-test.js`
 
 ### `tests/press-test.js`
 Keyboard-shortcut tests:
-- `T` toggles the face-button drawer open/closed.
+- `C` toggles the control drawer open/closed (`T` no longer does anything).
 - `Alt`/`Option` + a face key performs a 180° half turn (two `Alt+U`
   return to solved; `Shift` remains the prime modifier).
 - Run: `node tests/press-test.js`.
@@ -339,7 +344,7 @@ Playwright tests for face-button mouse/click behavior:
 - Action: two half-turn clicks return to solved (2 × 180° = 360°).
 - Action: four single prime (counter-clockwise) clicks return to solved
   (4 × 90° counter = 360°).
-- The face drawer opens at startup on a wide viewport and starts closed on a
+- The control drawer opens at startup on a wide viewport and starts closed on a
   narrow one; clicking the tab toggles it (works on iPad with no keyboard).
 - Run: `node tests/click-test.js`.
 
@@ -359,14 +364,14 @@ drains (`settle` refreshes them once). Checks, in order:
   `← Step` enabled and `Step →` disabled; in the middle of a long log both are
   live; walked all the way back, `← Step` disables again.
 - Disabled flags are read from the buttons' `disabled` DOM property (regardless
-  of the face drawer's state), and the test runs at 3× speed so the
+  of the control drawer's state), and the test runs at 3× speed so the
   random 18–35 move scramble drains within its wait timeout.
 - Run: `node tests/step-buttons-test.js` (`npm run test:step`).
 
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
 screenshots — `solved.png`, `scrambled.png`, `solved-after.png` — each with the
-**face-button drawer open** (left edge) plus the always-visible **Move Log
+**control drawer open** (left edge) plus the always-visible **Move Log
 panel** at the bottom. It drives the **real Scramble
 and Solve buttons** (so the shots reflect the current randomized scramble and
 solver), waiting for each animation to finish via `waitUntilIdle`. The harness:
@@ -417,7 +422,7 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   vertical tab in a slide-out drawer — the horizontal slide lives on an inner
   `.drawer-unit` transform so it never fights the outer element's vertical
   centering, and the toggle is a `click` on the tab (works on iPad, no keyboard)
-  or the `T` key. The Move Log is the opposite: a fixed bottom panel that is
+  or the `C` key. The Move Log is the opposite: a fixed bottom panel that is
   **always visible** (no drawer state at all).
 - **Drawer first-load race**: Tailwind v4's browser build loads via the runtime
   **Play CDN `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
@@ -426,11 +431,11 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable width; auto
   re-measurements snap (no slide), so the panel never visibly slides or peeks on
   first load.
-- **Face drawer auto-close**: the face drawer **opens at startup on a wide
+- **Control drawer auto-close**: the control drawer **opens at startup on a wide
   screen** and starts **closed on a narrow one**. When a Scramble or Solve is
   triggered, the open drawer's bounding box is checked against the cube's
   projected on-screen area via `drawerOverlapsCube()`; it is auto-closed only if
-  it would cover the cube. The `decideStartupFaceDrawer()` function tentatively
+  it would cover the cube. The `decideStartupControlDrawer()` function tentatively
   opens the drawer, runs the very same test, and closes it if it overlaps.
 - **Batch animation**: scramble and solve clear the log, then enqueue the entire
   sequence up front (so the Move Log shows all buttons at once), then auto-advance
@@ -444,8 +449,8 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 - **Drawer overlap detection**: `drawerOverlapsCube(drawerEl)` projects the cube's
   world-space AABB through the camera to screen pixels, then performs an axis-aligned
   rectangle intersection test against the drawer's `getBoundingClientRect()`. It is
-  used both by the Scramble/Solve auto-close and by `decideStartupFaceDrawer()` to
-  pick the face drawer's startup open/closed state.
+  used both by the Scramble/Solve auto-close and by `decideStartupControlDrawer()` to
+  pick the control drawer's startup open/closed state.
 - **Render loop**: `requestAnimationFrame` loop with `paused` flag (set during
   screenshot capture). dt capped at 50ms to prevent spiral-of-death.
 - **`window.__RUBIKS__` hook**: `setCamera()` resets to home position; `setPixelRatio(pr)`
