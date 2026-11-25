@@ -20,8 +20,9 @@ client-side with no external backend, and every library is loaded from a CDN.
 ## 2. Visuals & Rendering
 
 ### Scene & camera
-- Dark scene background (`0x0f172a`, matching the slate-950 page color). Renderer
-  uses `alpha: true` and `preserveDrawingBuffer: true` so the cube can be
+- Dark scene background (`0x0f172a` — slate-900, the same color the body uses as
+  its page background, which is what makes the stage's letterbox seamless).
+  Renderer uses `alpha: true` and `preserveDrawingBuffer: true` so the cube can be
   composited over the DOM in screenshots.
 - `PerspectiveCamera` with 38° FOV at a 3/4 view (home position `(6.5, 5.5, 8.5)`).
 - Physically-based lighting (post-r155): ambient (`2.8`) + a key directional light
@@ -29,6 +30,53 @@ client-side with no external backend, and every library is loaded from a CDN.
   (`0x88aaff`, `1.1`). A soft ground plane (`ShadowMaterial`, opacity `0.28`) at
   `y = -3.4` catches a drop shadow.
 - Since three.js r155, light intensities are ~π× the old "legacy" values.
+
+### Stage & empty-rectangle canvas
+- **The stage (`#stage`)** is the bounding box the ENTIRE app lives in:
+  `position: fixed; inset: 0; margin: 0 auto` with
+  `width: min(100vw, 1024px)`, `height: min(100vh, 1080px)`, `overflow: hidden`.
+  It is **horizontally centered and TOP-anchored** — flush with the viewport
+  top, so when the viewport is taller than 1080px the letterbox margin appears
+  at the **bottom only** (and on the sides whenever the viewport is wider than
+  1024px). Below the caps the stage IS the viewport and behaviour is
+  unchanged. The body is `bg-slate-900` — the SAME color as the scene clear
+  color (`0x0f172a`) — so the letterbox margins are seamless (no visible
+  edge). All chrome is anchored **inside** the stage (`absolute`, never
+  `fixed`), and the renderer, camera, and all projection math use the
+  stage/canvas rects, never the viewport's.
+- **The canvas (`#canvas-wrap`) fills the stage's EMPTY space**, not the whole
+  stage: the stage minus three chrome bands, each carrying a **16px clearance**
+  (the cube must never sit under a band), every piece computed from the real
+  DOM/CSS at runtime:
+  - **TOP** — the banner's actual height (its rect, measured) + 16px.
+  - **LEFT** — closed drawer: the binder tab's right edge + 16px; open drawer:
+    the panel card's right edge + 16px.
+  - **BOTTOM** — the Move Log's **reserved** height, computed as if it had
+    EXACTLY 3 button rows (never the dynamic height): the wrapper's `pb-3`
+    bottom margin + the card's header row + 3 rows of move buttons with 2px
+    gaps + the log area's `py-2` padding + 16px.
+  The cube lives at the world origin and the camera targets it, so the cube is
+  always centered in its canvas — sizing the canvas to the empty rectangle
+  therefore **centers the cube in the empty space at all viewport sizes**. The
+  bands are re-measured after every resize and drawer toggle.
+- **Close-slide tracking**: while the drawer slides closed (~0.3s CSS
+  transition) the left band changes, so a per-frame `requestAnimationFrame`
+  loop re-sizes the canvas every frame — the left band is a linear blend of the
+  two rest-state bands (closed: tab edge + 16; open: card edge + 16)
+  parameterised by the panel card's measured progress through the slide — so
+  the **cube slides left WITH the drawer** instead of jumping when the slide
+  ends. The blend is clamped to [0,1] for the whole slide in both directions
+  (including mid-slide re-toggles, each of which restarts the loop), a re-render
+  runs immediately after every resize (resizing resets the WebGL drawing
+  buffer; without this the compositor would paint an empty canvas and the cube
+  would vanish for the whole slide), and tracking stops when the card settles
+  (≤0.5px from the target for 2 frames, ~3s safety net), snapping to the
+  exactly-measured band. **Opening is an instant reflow** (no tracking).
+- **Stage-relative size caps**: `--stage-h: min(100vh, 1080px)` replaces the
+  old viewport units — `.log-cap` (Move Log) = **45% of the stage height** and
+  `.panel-cap` (control panel) = **95% of the stage height** (replaces the old
+  `max-h-[45vh]` / `max-h-[95vh]`; identical below the 1080px cap, scaled to
+  the stage above it).
 
 ### Cubies
 - The cube is **26 visible cubies** (27 grid positions; the center core has no
@@ -84,7 +132,7 @@ Standard **Singmaster notation**: `U D L R F B`, `'` (counter-clockwise),
 ### Control panel (left edge) — a slide-out drawer
 The control panel — the face buttons, the animation-speed slider, and the five
 action buttons — lives in a **panel that hides behind a tab** on the left edge, so
-the viewport stays clear. The tab is a vertical **"Control Panel"** handle (like a
+the cube's empty space stays clear. The tab is a vertical **"Control Panel"** handle (like a
 binder tab) on the panel's **right** edge; it is always visible, and the panel
 slides in from the left when opened:
 
@@ -187,13 +235,17 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Overall style
 - Dark-mode, glassy panels (`backdrop-blur`, semi-transparent dark backgrounds,
-  subtle ring borders). Page background: slate-950. `color-scheme: dark`.
+  subtle ring borders). Page background: **slate-900** (`bg-slate-900`) — the
+  same color as the scene clear color, which is what makes the stage's letterbox
+  margins seamless. `color-scheme: dark`.
 
 ### Top bar
-- **Full-width top banner**: one continuous edge-to-edge strip fixed to the top
-  edge, dark and only a hair lighter than the visible slate-900 scene background (~3% white
-  wash); the outer strip is pointer-events-none so the canvas stays draggable
-  beneath it, and it overlays the full-viewport canvas (no top padding added).
+- **Full-width top banner**: one continuous edge-to-edge strip anchored to the
+  **stage's** top edge, dark and only a hair lighter than the visible slate-900
+  scene background (~3% white wash); the outer strip is pointer-events-none.
+  The banner occupies the stage's top band — the canvas starts 16px below the
+  banner's bottom edge, so the banner never covers the cube (no top padding
+  added to the canvas).
 - **Left**: Cutie logo — a small 3×3 grid of colored squares next to the title
   and subtitle.
 - **Right**: Status pill with a colored dot (emerald/sky/amber/slate for
@@ -202,11 +254,12 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   "Solving…", "Solved (best effort)", "Already solved".
 
 ### Move Log panel (bottom edge) — always visible
-- **Not a drawer**: a panel **fixed at the bottom of the viewport, always
+- **Not a drawer**: a panel **fixed at the bottom of the stage, always
   visible** — no tab, no toggle, no keyboard shortcut, no startup decision. The
-  full-width bottom wrapper lets pointer events pass through everywhere except
-  the card itself, which is horizontally centered; it overlays the
-  full-viewport canvas with a backdrop blur (the cube and camera are untouched).
+  full-**stage-width** bottom wrapper lets pointer events pass through
+  everywhere except the card itself, which is horizontally centered; it sits in
+  the stage's bottom band (the canvas ends 16px above the log's reserved
+  height, so the panel never covers the cube).
 - Glassy card (rounded, semi-transparent slate-900, backdrop blur, ring border)
   that **hugs its content** (up to ~12 buttons wide).
 - **Header**: "Move Log" title + a live **move-count** (e.g. `12 moves`).
@@ -218,19 +271,29 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   (index `< cursor`, faint done look), **pending** (index `>= cursor`, dim),
   **current** (the move animating right now / last applied, bright amber
   highlight) — with the current button auto-scrolling into view. The card grows
-  with rows but **caps at ~45vh** and then scrolls internally (`.scroll-thin`
+  with rows but **caps at 45% of the stage height** (`.log-cap` = 45% of
+  `--stage-h` — identical to the old `45vh` cap while the stage fills the
+  window, scaled to the stage above it) and then scrolls internally
+  (`.scroll-thin`
   scrollbar). Empty state shows a placeholder message. The top bar's "Moves"
   counter shows the number of moves actually applied (the cursor); the panel's
   header count shows the total moves in the log.
 
 ### Control panel (left edge)
-- A **slide-out drawer**: it **opens at startup on a wide screen and stays closed
-  on a narrow one**, and auto-closes when a Scramble/Solve would slide it onto
-  the cube. While closed,
-  only a vertical "Control Panel" tab is visible on the panel's right edge. Tapping
-  the tab (or pressing `C`) slides the panel out; tapping again slides it back. The
-  tab is the rightmost child, so hiding the panel (sliding it left) leaves the tab
-  on screen.
+- A **slide-out drawer** whose **startup state follows one uniform rule**:
+  `decideStartupControlDrawer()` tentatively opens the drawer and runs the very
+  same `drawerOverlapsCube()` test — the drawer **opens iff its open position
+  clears the cube's projected on-screen area** (otherwise it closes). Because
+  the cube is now centered in the re-positioned empty-rectangle canvas, the
+  panel clears the cube at **1440×900, 1600×900 and 3440×1440** — at 3440×1440
+  the re-centered cube now clears the panel by ~150px — so it starts **open**
+  at those sizes and **closed** at **360×780**, where the panel would cover the
+  cube. A Scramble/Solve likewise **auto-closes** the drawer only when its open
+  position would overlap the cube. While closed, the panel card is fully off
+  the stage's left edge (clipped by the stage's `overflow: hidden`) and the
+  vertical "Control Panel" binder tab — the card's rightmost child — stays
+  visible, peeking in from the stage's left edge. Tapping the tab (or pressing
+  `C`) slides the panel out; tapping again slides it back.
 - Glassy panel: ONE tall bordered card stacking the three button columns
   (each labelled CW / CCW / Half above its buttons), the Animation-speed
   slider, and the five action buttons in an inner bordered sub-panel. No top
@@ -238,15 +301,17 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 
 ### Misc
 - **Drag-to-rotate hint**: a small pill, centered horizontally near the top
+  **of the stage**
   (`top-17`), "Drag to orbit · Scroll/Pinch to zoom" — single line, `whitespace-nowrap` so it never wraps (even at narrow phone widths); it fades out on the **first keypress
   or pointerdown** (via a capture-phase `document` listener that fires before the app's
   handlers), then removes itself from the DOM. Respects
   `prefers-reduced-motion: reduce` — skips the fade animation and removes immediately.
-- **Attribution (credit line)**: a small bottom-left line, "created with
+- **Attribution (credit line)**: a small bottom-left line **of the stage**, "created with
   qwen3.8:27b-mlx-4bit"; it is in the first-interaction dismiss list and fades
   away (and is removed from the DOM) at the exact moment the "Drag to orbit"
   hint dismisses.
-- **Solver toast**: a viewport-centered dark card with spinner ("Waking up the
+- **Solver toast**: a **stage-centered** dark card (flex-centered in a
+  full-stage overlay) with spinner ("Waking up the
   ChipGPT-munk..."), also reused for error messages, auto-hiding after ~4s.
 
 ---
@@ -323,8 +388,10 @@ moves and appending the solution. Run: `node tests/cursor-test.js`
 
 ### `tests/drawers-test.js`
 Playwright tests for the slide-out **control drawer's** auto-close-on-overlap
-and width-dependent startup: a narrow viewport starts it **closed** (the panel
-would cover the cube) while a wide one starts it **open**; the test opens the
+and **overlap-rule startup** (the drawer opens iff its open position clears the
+cube's projected on-screen area — the very same test as the auto-close): the
+360×780 narrow viewport starts it **closed** (the panel would cover the cube)
+while the 1600×900 wide one starts it **open**; the test opens the
 drawer if it started closed, clicks **Scramble**/**Solve**, and reads the tab's
 `aria-expanded` to confirm the drawer auto-closes when it would cover the cube and
 stays open when it doesn't. Run: `node tests/drawers-test.js`
@@ -345,8 +412,8 @@ Playwright tests for face-button mouse/click behavior:
 - Action: two half-turn clicks return to solved (2 × 180° = 360°).
 - Action: four single prime (counter-clockwise) clicks return to solved
   (4 × 90° counter = 360°).
-- The control drawer opens at startup on a wide viewport and starts closed on a
-  narrow one; clicking the tab toggles it (works on iPad with no keyboard).
+- At its 1440×900 viewport the control drawer **starts open** (its open position
+  clears the re-centered cube); clicking the tab toggles it (works on iPad with no keyboard).
 - Run: `node tests/click-test.js`.
 
 ### `tests/step-buttons-test.js`
@@ -379,7 +446,9 @@ solver), waiting for each animation to finish via `waitUntilIdle`. The harness:
 
 1. Calls `window.__RUBIKS__.renderFrame()` → raw RGBA pixels from the GL back buffer.
 2. Calls `page.screenshot()` → the full DOM UI.
-3. Composites the cube PNG over the UI screenshot at the canvas origin via ImageMagick.
+3. Composites the cube PNG over the UI screenshot at the **live canvas origin**
+   (the canvas rect's x/y read from the page — the letterbox + band offsets;
+   (0, 0) when the stage fills the viewport) via ImageMagick.
 
 Requires: Node, Playwright + Chromium, and **ImageMagick** (`magick` / `convert`).
 Outputs to `docs/screenshots/`.
@@ -400,7 +469,10 @@ matching the app.
 
 The project-root `README.md` has: a title and description, a screenshot table
 + gallery link, how to run (double-click `index.html`), how to play (4 steps), a
-UI description, a keyboard shortcuts table, a move-notation explanation, a
+UI description (the capped, centered, top-anchored stage; the empty-rectangle
+canvas with the cube centered in the empty space; top banner; always-visible
+Move Log; slide-out control drawer with its overlap-rule startup state), a
+keyboard shortcuts table, a move-notation explanation, a
 how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 
 ---
@@ -419,11 +491,24 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   of buttons (`U'…B'`), so no modifier is needed for the on-screen controls. The
   face *keys* keep `Shift` as the prime modifier and `Alt`/`Option` as the
   half-turn modifier for desktop keyboards.
+- **Stage & empty-rectangle canvas**: the whole app lives in the centered,
+  top-anchored `#stage` box capped at 1024×1080 (seamless slate-900 letterbox
+  on larger windows), and the WebGL canvas fills only the stage's empty
+  rectangle (stage minus the banner / drawer / Move Log bands, each + 16px
+  clearance; the bottom band is the Move Log's reserved 3-row height) — so the
+  cube, always centered in its canvas, is centered in the empty space at every
+  viewport size. Closing the drawer re-sizes the canvas per frame (linear blend
+  of the two rest-state left bands driven by the panel card's slide progress,
+  re-rendering after each resize to keep the buffer from flickering clear) so
+  the cube slides left with the drawer; opening is an instant reflow. Full
+  detail in §2 *Stage & empty-rectangle canvas*.
 - **Drawer + always-visible panel**: the layer buttons (left edge) hide behind a
   vertical tab in a slide-out drawer — the horizontal slide lives on an inner
   `.drawer-unit` transform so it never fights the outer element's vertical
   centering, and the toggle is a `click` on the tab (works on iPad, no keyboard)
-  or the `C` key. The Move Log is the opposite: a fixed bottom panel that is
+  or the `C` key. When closed, the panel card sits fully off the stage's left
+  edge (clipped by the stage's `overflow: hidden`), leaving the binder tab
+  peeking in from that edge. The Move Log is the opposite: a fixed bottom panel that is
   **always visible** (no drawer state at all).
 - **Drawer first-load race**: Tailwind v4's browser build loads via the runtime
   **Play CDN `<script>`**, so its `w-12`/`gap`/`p-3` columns may not be laid out when the
@@ -432,12 +517,16 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable width; auto
   re-measurements snap (no slide), so the panel never visibly slides or peeks on
   first load.
-- **Control drawer auto-close**: the control drawer **opens at startup on a wide
-  screen** and starts **closed on a narrow one**. When a Scramble or Solve is
+- **Control drawer auto-close**: the control drawer's **startup state follows
+  the overlap rule**: `decideStartupControlDrawer()` tentatively opens the
+  drawer, runs the very same `drawerOverlapsCube()` test, and closes it if the
+  open position would cover the cube — so it starts **open** at 1440×900,
+  1600×900 and 3440×1440 (the cube is centered in the re-positioned
+  empty-rectangle canvas and clears the panel by ~150px at 3440×1440) and
+  **closed** at 360×780. When a Scramble or Solve is
   triggered, the open drawer's bounding box is checked against the cube's
-  projected on-screen area via `drawerOverlapsCube()`; it is auto-closed only if
-  it would cover the cube. The `decideStartupControlDrawer()` function tentatively
-  opens the drawer, runs the very same test, and closes it if it overlaps.
+  projected on-screen area via the same `drawerOverlapsCube()`; it is
+  auto-closed only if it would cover the cube.
 - **Batch animation**: scramble and solve clear the log, then enqueue the entire
   sequence up front (so the Move Log shows all buttons at once), then auto-advance
   via `startCurrent()` → `finishMove()` → `startCurrent()` … until the queue drains.
@@ -448,7 +537,9 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 - **Touch pinch-zoom**: the `Orbit` class handles two-finger pinch zoom in addition
   to mouse-wheel zoom. Single-finger touch orbit is also supported.
 - **Drawer overlap detection**: `drawerOverlapsCube(drawerEl)` projects the cube's
-  world-space AABB through the camera to screen pixels, then performs an axis-aligned
+  world-space AABB through the camera to screen pixels **in the canvas rect's
+  coordinate space** (the canvas backs only the stage's empty rectangle, so the
+  canvas's rect offset from the viewport is added), then performs an axis-aligned
   rectangle intersection test against the drawer's `getBoundingClientRect()`. It is
   used both by the Scramble/Solve auto-close and by `decideStartupControlDrawer()` to
   pick the control drawer's startup open/closed state.

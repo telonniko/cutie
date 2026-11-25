@@ -8,9 +8,11 @@
  *   animation stays visible. On a non-overlapping layout (a wide screen) the
  *   drawer is left open.
  *
- *   The drawer's STARTUP state is width-dependent, decided by the very same
- *   overlap test: a narrow viewport starts it CLOSED (the panel would cover the
- *   cube), a wide one starts it OPEN. Each scenario asserts that startup state,
+ *   The drawer's STARTUP state is stage-dependent, decided by the very same
+ *   overlap test run against the re-centered canvas: a narrow stage starts it
+ *   CLOSED (the panel would cover the cube), a wide one starts it OPEN (the
+ *   cube, centered in the stage's empty space, clears the open panel). Each
+ *   scenario asserts that startup state,
  *   opens the drawer if it started closed, clicks the action button, and reads
  *   the tab's aria-expanded to confirm whether it auto-closed:
  *
@@ -39,10 +41,11 @@ function findExecutable() {
   return undefined;
 }
 
-// The cube sits in the centre of a full-viewport canvas, so whether the drawer
-// overlaps it depends on the viewport width:
-//   - a narrow viewport (phone-width) pushes the panel over the cube.
-//   - a wide viewport leaves the panel in the side margin, clear of the cube.
+// The cube sits at the centre of the stage's empty-rectangle canvas (to the
+// right of the drawer's resting position), so whether the OPEN drawer
+// overlaps it depends on the stage size:
+//   - a narrow stage (phone-width) pushes the panel over the cube.
+//   - a wide stage leaves the panel clear of the re-centered cube.
 const scenarios = [
   { w: 360,  h: 780,  btn: '#btn-scramble', label: 'Scramble', expectClose: true,  desc: 'narrow' },
   { w: 1600, h: 900,  btn: '#btn-scramble', label: 'Scramble', expectClose: false, desc: 'wide'   },
@@ -78,9 +81,10 @@ const DRAWERS = [
     const openOf = (tab) => page.evaluate(
       (t) => document.getElementById(t).getAttribute('aria-expanded'), tab);
 
-    // 1) The drawer starts in the width-dependent state: closed on a narrow
-    //    viewport, open on a wide one. expectClose tracks that (narrow->closed,
-    //    wide->open), so it doubles as the expected startup state.
+    // 1) The drawer starts in the stage-dependent state: closed on a narrow
+    //    stage, open on a wide one (the re-centered cube clears the panel).
+    //    expectClose tracks that (narrow->closed, wide->open), so it doubles
+    //    as the expected startup state.
     const startState = s.expectClose ? 'false' : 'true';
     for (const d of DRAWERS) {
       check(tag(s) + s.label + ` ${d.name} starts ${s.expectClose ? 'closed' : 'open'}`,

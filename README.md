@@ -54,15 +54,40 @@ Double-click `index.html` in your file manager and open it in a modern browser
 
 The interface is a dark, glassy overlay floating over the 3D viewport.
 
-### 3D viewport (center)
+### Layout — the whole app lives in a capped, centered stage
+Everything — the canvas, the top banner, the Move Log, the control drawer, the
+toast — lives inside a single **stage** box that is **horizontally centered and
+anchored to the top of the window** (flush with the top edge), capped at
+**1024px wide × 1080px tall**. When the window is smaller than the caps the
+stage fills it and nothing changes; on a larger window the leftover space
+becomes a **letterbox margin** on the sides (and at the **bottom**, when the
+viewport is taller than 1080px). The page background is the same slate-900 as
+the 3D scene, so the margin blends in seamlessly and the app simply looks a
+little smaller — nothing moves or re-wraps. The chrome size caps are
+stage-relative (Move Log ≤ 45% and control panel ≤ 95% of the *stage* height,
+not the viewport's), so they scale with the stage.
+
+### 3D viewport (the stage's empty space)
 - **Drag** to orbit the camera around the cube.
 - **Scroll / pinch** to zoom.
+
+The WebGL canvas no longer backs the whole stage: it fills exactly the
+**empty space** — the stage minus the top banner band, the left drawer band,
+and the bottom Move Log band, each leaving a **16px clearance** so the cube
+never sits under chrome (the bottom band is the Move Log's *reserved* height,
+computed as if it had exactly 3 button rows, not its dynamic height). The cube
+always projects to the exact center of its canvas, so sizing the canvas to the
+empty rectangle keeps the **cube centered in the empty space at every
+viewport size**. When the drawer **closes**, a per-frame loop tracks the
+panel's slide and re-sizes the canvas each frame, so the **cube slides left
+with the drawer** instead of jumping when the slide ends; **opening** is an
+instant reflow.
 
 The cube itself is **view-only** — turns come from the **face buttons** and
 **keyboard shortcuts** (below), not from clicking the cube.
 
 ### Top bar
-- A **full-width banner** fixed to the top edge — one continuous dark strip, only
+- A **full-width banner** fixed to the **stage's** top edge — one continuous dark strip, only
   a hair lighter than the visible slate-900 scene background — holding both items.
 - **Cutie** logo (left).
 - **Status pill** (right): a colored dot + label showing the current state
@@ -70,10 +95,10 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   counter.
 
 ### Move Log (bottom edge) — an always-visible panel
-The Move Log is a panel **fixed at the bottom of the screen, always visible** —
-no drawer, no tab, no toggle, no keyboard shortcut. The wrapper spans the full
-bottom edge and centers a glassy card (backdrop blur over the canvas); the card
-hugs its content and the canvas/cube are untouched:
+The Move Log is a panel **fixed at the bottom of the stage, always visible** —
+no drawer, no tab, no toggle, no keyboard shortcut. The wrapper spans the
+stage's full bottom width and centers a glassy card; the card hugs its content
+and the canvas/cube are untouched:
 - **Header** — "Move Log" title plus a live **move-count** (e.g. `12 moves`).
 - **Move buttons** — the executed moves shown as a **row of move-buttons that
   wraps**, one per token (`R`, `U'`, `F2`, …), styled to match the face buttons.
@@ -81,8 +106,8 @@ hugs its content and the canvas/cube are untouched:
   screen size: **up to 12 per row**, wrapping to additional rows as moves are
   added, centered. On narrow screens fewer than 12 fit per row and it simply
   wraps — no horizontal overflow.
-- **Scroll** — the card grows with rows but caps at ~45% of the viewport height,
-  then scrolls internally; the button for the move being turned
+- **Scroll** — the card grows with rows but caps at 45% of the **stage height**
+  (a stage-relative cap, so it scales with the stage), then scrolls internally; the button for the move being turned
   **highlights first, then the face turns, then the next one** — moves before
   the current step show as done, moves after it as pending — and the current
   button auto-scrolls into view.
@@ -93,12 +118,18 @@ hugs its content and the canvas/cube are untouched:
 ### Control panel (left edge) — a slide-out drawer
 The control panel — the face buttons, the animation-speed slider, and the five
 action buttons — lives in a panel that **hides behind a tab** on the left edge,
-so the cube viewport stays clear. It **opens at startup on a wide screen and
-stays closed on a narrow one**, and auto-closes when a Scramble/Solve would
-slide it onto the cube. The tab is a vertical **"Control
-Panel"** handle (like a tab in a binder) that sits on the panel's **right**
-edge; it is always visible, and the panel itself slides in from the left when
-opened:
+so the cube's empty space stays clear. Its **startup state follows one uniform
+rule: the drawer opens iff its open position clears the cube's projected
+on-screen area** — the very same overlap test that makes a Scramble/Solve
+**auto-close** it when it would slide onto the cube. Because the cube is now
+centered in the re-positioned canvas, the panel clears the cube at 1440×900,
+1600×900 and 3440×1440 (at 3440×1440 the re-centered cube now clears the panel
+by ~150px) — so the drawer starts **open** at those sizes — and stays **closed**
+at 360×780, where the panel would cover the cube. The tab is a vertical
+**"Control Panel"** handle (like a tab in a binder) that sits on the panel's
+**right** edge; it is always visible — when closed, the panel slides fully off
+the stage's left edge (clipped by the stage) and the tab stays peeking in from
+that edge — and the panel itself slides in from the left when opened:
 
 - **Tap the tab** to slide the panel out and reveal the controls; **tap it again**
   to slide it back. The toggle is a `click` on a real `<button>`, so it works
