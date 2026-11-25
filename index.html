@@ -16,21 +16,23 @@
   :root { color-scheme: dark; }
   html, body { height: 100%; margin: 0; }
   body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  /* The stage: the bounding box the ENTIRE app lives in. Centered in the
-     viewport on both axes (fixed + inset:0 + margin:auto), capped at
-     1024x1080 so a larger window letterboxes it with the page's own
-     background (the body is the same slate-900 as the scene, so the edge is
-     invisible). All chrome is anchored INSIDE it (absolute, never fixed) and
-     the WebGL canvas fills its empty space (see #canvas-wrap below). overflow
-     hidden clips the closed control panel behind the stage's left edge (the
-     binder tab still peeks in from that edge). --stage-h is the stage-relative
-     unit for
+  /* The stage: the bounding box the ENTIRE app lives in. Horizontally
+     centered and TOP-anchored (fixed + inset:0 + margin:0 auto — flush with
+     the viewport top), capped at 1024x1080 so a larger window letterboxes it
+     with the page's own background (the body is the same slate-900 as the
+     scene, so the edge is invisible). When the viewport is taller than 1080px
+     the letterbox margin appears at the BOTTOM only; below the caps the stage
+     IS the viewport. All chrome is anchored INSIDE it (absolute, never fixed)
+     and the WebGL canvas fills its empty space (see #canvas-wrap below).
+     overflow hidden clips the closed control panel behind the stage's left
+     edge (the binder tab still peeks in from that edge). --stage-h is the
+     stage-relative unit for
      chrome sizing: identical to the viewport below the caps, scaled to the
      stage above them. */
   #stage {
     position: fixed;
     inset: 0;
-    margin: auto;
+    margin: 0 auto;
     width: min(100vw, 1024px);
     height: min(100vh, 1080px);
     overflow: hidden;
@@ -114,10 +116,12 @@
 </head>
 <body class="bg-slate-900 text-slate-100">
   <!-- ======================= The stage (confines the whole app) =======================
-       Centered box, max 1024x1080 (see #stage CSS). Everything below — canvas,
-       banner, drawers, toast, hint, attribution — is anchored to it. Outside
-       the stage the body's slate-900 (== the scene background) shows through,
-       so the letterbox is seamless. -->
+       Horizontally centered, TOP-anchored box, max 1024x1080 (see #stage
+       CSS): flush with the viewport top, and when the viewport is taller
+       than 1080px the letterbox margin sits at the bottom only. Everything
+       below — canvas, banner, drawers, toast, hint, attribution — is anchored
+       to it. Outside the stage the body's slate-900 (== the scene
+       background) shows through, so the letterbox is seamless. -->
   <div id="stage">
     <!-- 3D viewport (fills the stage's empty space — see the #canvas-wrap
          comment in the <style> block above) -->
@@ -1124,6 +1128,15 @@
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      // Resizing the canvas resets (clears) the WebGL drawing buffer — and
+      // this function can run AFTER the main render loop in the same frame
+      // (the drawer's per-frame band tracking is the last rAF callback of
+      // each slide frame, so the compositor would otherwise pick up the
+      // CLEARED buffer and paint an empty canvas: the cube vanishing for the
+      // whole slide and snapping back when tracking stops). Re-render
+      // immediately so the buffer always holds a fresh frame before the
+      // display refreshes.
+      renderer.render(scene, camera);
     }
   }
   // Initial size: the drawer's exact closed shift is measured later by
@@ -1138,14 +1151,22 @@
   // blend of the two rest-state bands (closed: tab edge + 16; open: card edge
   // + 16), parameterised by the panel card's measured progress through the
   // slide — the cube's position is thus a direct function of the panel's
-  // position. When the slide settles, tracking stops and the canvas snaps to
-  // the exactly-measured band.
+  // position. applyCanvasRect re-renders right after every resize, so the
+  // compositor never catches a cleared drawing buffer and the cube stays
+  // visible through the whole slide in BOTH directions. When the slide
+  // settles, tracking stops and the canvas snaps to the exactly-measured
+  // band.
   let bandTrackRAF = 0;
   function startBandTracking() {
     cancelAnimationFrame(bandTrackRAF);
     const card = controlDrawer.children[0];
     const shiftPx = Math.abs(parseFloat(controlDrawer.style.getPropertyValue('--drawer-shift')) || 0);
     if (!shiftPx) { applyCanvasRect(); return; } // no measured shift: nothing to track
+    // The card's right edge (stage-relative) at each rest state: closed, it
+    // sits exactly on the stage's left edge (0 — the shift was measured from
+    // there); open, it is shiftPx from it.
+    const closedRight = 0;
+    const openRight = shiftPx;
     // The tab's right edge (stage-relative) when closed: the card's right edge
     // then sits exactly on the stage's left edge, so it is just gap + tab width
     // (transform-invariant, both elements share the sliding parent).
@@ -1158,7 +1179,14 @@
       bandTrackRAF = 0;
       const sr = stage.getBoundingClientRect();
       const cardR = card.getBoundingClientRect().right - sr.left;
-      const p = THREE.MathUtils.clamp(cardR / shiftPx, 0, 1);
+      // Blend parameter = the card's live progress between its two rest
+      // edges, normalized: (cardRight - closedRight)/(openRight -
+      // closedRight). getBoundingClientRect is clipping-independent (the
+      // stage's overflow hidden never shrinks the measured box), and the
+      // clamp keeps p — hence the band, between closedBand and openBand —
+      // in [0,1] for the WHOLE slide in BOTH directions, including mid-slide
+      // re-toggles (each of which restarts this loop with a flipped target).
+      const p = THREE.MathUtils.clamp((cardR - closedRight) / (openRight - closedRight), 0, 1);
       applyCanvasRect(closedBand + (openBand - closedBand) * p);
       if (Math.abs(cardR - targetR) < 0.5) {
         if (++still >= 2) { applyCanvasRect(); return; }  // settled: exact band
@@ -1218,10 +1246,10 @@
     ];
     let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
     const p = new THREE.Vector3();
-    // Project the cube into the CANVAS rect's coordinate space. The canvas is
-    // the stage's full-size backing and — when letterboxed — offset from the
-    // viewport origin, so add its rect offset to keep the same coordinate
-    // space as the drawer's viewport-space getBoundingClientRect().
+    // Project the cube into the CANVAS rect's coordinate space. The canvas
+    // backs the stage's empty rectangle (offset from the stage and viewport
+    // origins), so add its rect offset to keep the same coordinate space as
+    // the drawer's viewport-space getBoundingClientRect().
     const cr = renderer.domElement.getBoundingClientRect();
     for (const c of corners) {
       p.set(c[0], c[1], c[2]).project(camera);
@@ -1380,12 +1408,10 @@
    *  RENDER LOOP                                                             *
    * ---------------------------------------------------------------------- */
   let lastTime = performance.now();
-  let paused = false; // set true while a screenshot is captured
   function animate(now) {
     requestAnimationFrame(animate);
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
-    if (paused) return;
     controls.update();
     updateAnimation(dt);
     renderer.render(scene, camera);
