@@ -261,8 +261,8 @@
   <!-- ======================= Solver loading toast =======================
        Full-stage overlay, flex-centered, above canvas/drawers (z-50). -->
   <div id="solver-toast" class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none hidden">
-    <div class="flex items-center gap-3 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-6 py-4 shadow-2xl">
-      <div class="w-[27px] h-[27px] border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+    <div class="flex items-center gap-3 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-6 py-4 shadow-2xl transition-opacity duration-250 opacity-0">
+      <div id="solver-spinner" class="w-[27px] h-[27px] border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
       <span class="text-[1.40625rem] text-slate-200">Waking up the solver...</span>
     </div>
   </div>
@@ -631,6 +631,9 @@
   /* ------------------------------------------------------------------------ *
    *  APP STATE + ANIMATION                                                    *
    * ---------------------------------------------------------------------- */
+  // Cap on the Move Log: it may hold at most 36 moves total (solve, scramble,
+  // and face turns alike).
+  const MAX_MOVES = 36;
   const state = {
     moves: [],          // the full Move Log: every move recorded this session
     cursor: 0,          // index of the CURRENT step: the cube's physical state is
@@ -870,6 +873,12 @@
     const token = face + (power === 1 ? '2' : (power === 2 ? "'" : ''));
     // Discard any future moves beyond the cursor, then append the new one.
     state.moves.length = state.cursor;
+    // The Move Log is capped: once it holds MAX_MOVES moves, a face turn is
+    // refused (the cube does not turn). Undoing a move frees a slot again.
+    if (state.moves.length >= MAX_MOVES) {
+      toastMsg('Maximum moves allowed: ' + MAX_MOVES, 3000, false);
+      return;
+    }
     renderMoves();
     recordMove(token);
     // The move is now the current step; animate it (single, non-auto).
@@ -933,6 +942,13 @@
     const solution = cj.solve(); // e.g. "R U R' U' ..."
     const tokens = parseAlg(solution);
     if (!tokens.length) { setStatus('Already solved', 'solved'); return; }
+    // The Move Log is capped: if the solver came back with a sequence that
+    // would not fit, refuse it WITHOUT touching the log or the cube (the
+    // queue is never filled and the existing log is never cleared).
+    if (tokens.length > MAX_MOVES) {
+      toastMsg('Failed to find a solve solution', 3000, false);
+      return;
+    }
     // Clear the log first (the cube's physical state is unaffected — it's the
     // source of truth), then queue the solution as the only batch.
     resetMoves();
@@ -943,12 +959,32 @@
     if (state.busy) setStatus('Solving…', 'solving');
   }
 
-  let toastTimer;
-  function toastMsg(msg) {
-    toast.querySelector('span:last-child').textContent = msg;
-    toast.classList.remove('hidden');
+  let toastTimer;      // pending auto-hide (fires `ms` after the show)
+  let toastFadeTimer;  // pending fade completion (toggles `hidden` ~250ms later)
+  const toastCard = toast.querySelector('div');
+  const toastSpinner = document.getElementById('solver-spinner');
+  // Fade the card out (250ms), then flip the wrapper to `hidden` so the
+  // display:none cannot interrupt the transition.
+  function toastHide() {
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.add('hidden'), 4000);
+    clearTimeout(toastFadeTimer);
+    toastCard.classList.add('opacity-0');
+    toastFadeTimer = setTimeout(() => toast.classList.add('hidden'), 250);
+  }
+  // Show a toast for `ms` milliseconds, fading in/out over 250ms. With
+  // `withSpinner = false` the spinner is hidden (plain message toasts, e.g.
+  // the Move Log limit refusals).
+  function toastMsg(msg, ms = 4000, withSpinner = true) {
+    toastCard.querySelector('span:last-child').textContent = msg;
+    if (withSpinner) toastSpinner.classList.remove('hidden');
+    else toastSpinner.classList.add('hidden');
+    // Cancel any pending hide/fade, then fade back in: drop `hidden` now and
+    // clear `opacity-0` on the next frame so the 250ms transition can run.
+    clearTimeout(toastTimer);
+    clearTimeout(toastFadeTimer);
+    toast.classList.remove('hidden');
+    requestAnimationFrame(() => toastCard.classList.remove('opacity-0'));
+    toastTimer = setTimeout(toastHide, ms);
   }
 
   // --- Face buttons ---
@@ -1425,10 +1461,12 @@
   function initSolver() {
     if (typeof window.Cube === 'undefined') { toastMsg('cubejs failed to load (check your connection).'); return; }
     toast.classList.remove('hidden');
+    toastCard.classList.remove('opacity-0'); // the card starts opacity-0; show the spinner toast instantly
     setTimeout(() => {
       try {
         window.Cube.initSolver();
         solverReady = true;
+        toastCard.classList.add('opacity-0');
         toast.classList.add('hidden');
       } catch (e) {
         toastMsg('Solver init failed: ' + e.message);

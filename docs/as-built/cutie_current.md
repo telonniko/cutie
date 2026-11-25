@@ -204,6 +204,28 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   solution, and the cube ends solved regardless of where the cursor was. If
   already solved, shows "Already solved". After solving: "Solved" or
   "Solved (best effort)".
+- **Over-cap refusal**: if the solver returns a sequence of **more than 36
+  moves** (`tokens.length > MAX_MOVES`), the answer is refused *before*
+  `resetMoves()` — the queue is never filled, the existing log is never
+  cleared, and the cube is untouched. `toastMsg('Failed to find a solve
+  solution', 3000, false)` shows a plain (no-spinner) toast that fades out.
+
+### Move limit (36-move cap)
+- A `MAX_MOVES = 36` constant (next to the `state` definition) caps the Move
+  Log at **36 moves total** — solves, scrambles, and hand face turns alike.
+- **Face turn**: `userTurn()` truncates the log to the cursor (dropping future
+  moves) and *then* checks `state.moves.length >= MAX_MOVES`; at the cap it
+  refuses the turn — no animation, no log entry — and shows
+  `toastMsg('Maximum moves allowed: 36', 3000, false)`. Undoing a move (Step
+  ←) frees a slot, so the next turn is accepted. Scrambles (18–24 moves)
+  never reach the cap and are unaffected.
+- **Solve**: `solve()` checks `tokens.length > MAX_MOVES` right after
+  `parseAlg` + the empty check, and *before* `resetMoves()` — an over-cap
+  answer is dropped with a "Failed to find a solve solution" toast, leaving
+  the log and the cube untouched.
+- The checks run in the two existing choke points (`userTurn` for all face
+  turns — buttons and keyboard alike — and `solve()`), so no other code path
+  can grow the log past the cap.
 
 ### Step forward / backward — a cursor model
 - The Move Log tracks a **`cursor`** (the "current step"). The cube's physical
@@ -318,10 +340,17 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   and the first-interaction dismiss script now tracks only the drag hint.
 - **Solver toast**: a **stage-centered** dark card (flex-centered in a
   full-stage overlay) with a **27px spinner** (`w-[27px] h-[27px]`, 2px
-  border) and a **22.5px label** (`text-[1.40625rem]`), reading "Waking up
-  the solver..." — shrunk 25% from the old 36px spinner (3px border) / 30px
-  (`1.875rem`) label; card padding unchanged (`gap-3 px-6 py-4`). Also reused
-  for error messages, auto-hiding after ~4s.
+  border, `#solver-spinner`) and a **22.5px label** (`text-[1.40625rem]`),
+  reading "Waking up the solver..." — shrunk 25% from the old 36px spinner
+  (3px border) / 30px (`1.875rem`) label; card padding unchanged (`gap-3 px-6 py-4`).
+  `toastMsg(msg, ms = 4000, withSpinner = true)` reuses the card for messages:
+  with `withSpinner = false` the spinner is hidden (plain message toasts, e.g.
+  the Move-limit refusals). The card carries `transition-opacity duration-250`
+  and **fades in/out over 250ms** (show: drop `hidden`, clear `opacity-0` on
+  the next frame; hide: add `opacity-0`, then flip the wrapper to `hidden`
+  ~250ms later), auto-hiding after `ms` (the Move-limit toasts use 3000ms;
+  solver-init messages keep the 4000ms default). A single `toastTimer`/
+  `toastFadeTimer` pair is cleared on every new show.
 
 ---
 
@@ -446,6 +475,18 @@ drains (`settle` refreshes them once). Checks, in order:
   random 18–24 move scramble drains within its wait timeout.
 - Run: `node tests/step-buttons-test.js` (`npm run test:step`).
 
+### `tests/move-limits-test.js`
+Playwright tests for the **36-move Move Log cap** (`MAX_MOVES`): 36 keyboard
+`U` turns fill the log to exactly 36 (and leave the cube solved — 36 × 90° =
+9 full turns); a 37th turn is refused (log stays 36, the cube stays solved —
+nothing turned — and a no-spinner toast "Maximum moves allowed: 36" shows
+for ~3s and fades out); stepping back frees a slot so the next turn is
+accepted; a mocked `Cube.prototype.solve` returning 80 moves is refused with a
+"Failed to find a solve solution" toast while the log and the cube stay
+untouched; and a Scramble after a Reset still yields 18–24 moves (the cap did
+not break scrambles). Driven through the real UI at a 1600×900 viewport (the
+control drawer starts open there). Run: `node tests/move-limits-test.js`.
+
 ### `tools/render-screenshot.js`
 Headless screenshot harness (Playwright + ImageMagick) that captures three
 screenshots — `solved.png`, `scrambled.png`, `solved-after.png` — each with the
@@ -482,7 +523,8 @@ The project-root `README.md` has: a title and description, a screenshot table
 UI description (the capped, centered, top-anchored stage; the empty-rectangle
 canvas with the cube centered in the empty space; top banner; always-visible
 Move Log; slide-out control drawer with its overlap-rule startup state), a
-keyboard shortcuts table, a move-notation explanation, a
+keyboard shortcuts table, a move-notation explanation, a **Move limit**
+section (the 36-move cap and its two refusal toasts), a
 how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 
 ---
@@ -578,6 +620,14 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   then computes the solution from the cube's *current physical state*
   (`readFaceletString(cubies)`), so it always solves the cube as it actually is —
   the earlier bug was a stale redo stack being replayed ahead of the solution.
+- **Move limit (`MAX_MOVES = 36`)**: the Move Log holds at most 36 moves. The
+  two choke points enforce it: `userTurn()` checks `state.moves.length >=
+  MAX_MOVES` *after* truncating to the cursor (so an undo frees a slot) and
+  refuses the turn with a "Maximum moves allowed: 36" toast (3s, fades, no
+  spinner); `solve()` checks `tokens.length > MAX_MOVES` after `parseAlg` and
+  *before* `resetMoves()`, refusing over-cap answers with a "Failed to find a
+  solve solution" toast while leaving the log and cube untouched. Scrambles
+  (18–24) never hit the cap.
 - **Solver lifecycle**: `Cube.initSolver()` is deferred in a `setTimeout(50ms)`;
   the Solve button awaits readiness.
 - **All code well-commented**, free of placeholder or missing functions.

@@ -23,6 +23,7 @@ any failure), so they double as smoke tests and as CI gates.
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
 | `drawers-test.js` | Control-drawer auto-close-on-overlap tests (startup state + Scramble/Solve) | Node, Playwright + Chromium | `node tests/drawers-test.js` |
 | `step-buttons-test.js` | "← Step" / "Step →" enable/disable tracking with the cursor | Node, Playwright + Chromium | `npm run test:step` or `node tests/step-buttons-test.js` |
+| `move-limits-test.js` | Move Log 36-move cap: 37th turn refused with a toast, undo frees a slot, an over-36-move solve is refused (log + cube untouched), scramble still 18–24 | Node, Playwright + Chromium | `node tests/move-limits-test.js` |
 
 ## Prerequisites
 
