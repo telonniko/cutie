@@ -58,8 +58,11 @@ The interface is a dark, glassy overlay floating over the 3D viewport.
 Everything — the canvas, the top banner, the Move Log, the control drawer, the
 toast — lives inside a single **stage** box that is **horizontally centered and
 anchored to the top of the window** (flush with the top edge), capped at
-**1024px wide × 1080px tall**. When the window is smaller than the caps the
-stage fills it and nothing changes; on a larger window the leftover space
+**1024px wide × min(100dvh, 1080px) tall** — the height cap uses the
+*dynamic* viewport height (`100dvh`), so on mobile the stage tracks the
+visible area as browser toolbars collapse and expand. When the window is
+smaller than the caps the stage fills it and nothing changes; on a larger
+window the leftover space
 becomes a **letterbox margin** on the sides (and at the **bottom**, when the
 viewport is taller than 1080px). The page background is the same slate-900 as
 the 3D scene, so the margin blends in seamlessly and the app simply looks a
@@ -89,7 +92,8 @@ The cube itself is **view-only** — turns come from the **face buttons** and
 ### Top bar
 - A **full-width banner** fixed to the **stage's** top edge — one continuous dark strip, only
   a hair lighter than the visible slate-900 scene background — holding both items.
-- **Cutie** logo (left).
+- **Cutie** logo (left), with a small "by Qwen3.8" credit right next to
+  the title.
 - **Status pill** (right): a colored dot + label showing the current state
   (**Solved**, **Scrambled**, **Turning…**, **Solving…**) and a live **Moves**
   counter.
