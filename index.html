@@ -76,8 +76,9 @@
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.03);
     transform: translateY(2px) scale(0.94);
   }
-  /* Control panel drawer: the panel slides in/out horizontally. The outer fixed
-     element owns the vertical centering (-translate-y-1/2), so the horizontal
+  /* Control panel drawer: the panel slides in/out horizontally. The outer
+     element is top-pinned (top-[68px] fallback; the JS in the module sets its
+     top to the live banner height + 16 in applyCanvasRect), so the horizontal
      slide lives here on its own transform. .drawer-closed translates the unit
      left by --drawer-shift (set in JS: unit width minus the tab width) so the
      rightmost tab stays on screen. The default is a large negative value so that
@@ -199,7 +200,13 @@
        Solve, ← Step, Step →, Reset) in an inner bordered sub-panel.  Each face
        button is one fixed move, so a tap always does exactly one thing with no
        modifier — important on touch devices (e.g. iPad) that have no Shift key. -->
-  <div class="absolute left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+  <!-- Top-pinned: the wrapper's top sits at the top banner's height + 16px —
+       the same live value the canvas's top band uses (applyCanvasRect sets it
+       on startup / every resize / every band re-measure), so the panel's top
+       edge always equals the empty-space top. top-[68px] is the pre-JS
+       fallback (banner 52px + 16) so first paint is already sane. The card
+       and the binder tab share this one flex row, so they move as a unit. -->
+  <div class="absolute left-2 top-[68px] z-20 pointer-events-none">
     <div id="control-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
       <!-- The button panel: slides left to hide; the tab sits to its right. One
            bordered card stacks the face columns, the speed slider, and the
@@ -1010,7 +1017,9 @@
   // The panel hides off the left edge behind a vertical tab that is its rightmost
   // child.  Clicking/tapping the tab slides the panel out; clicking it again
   // (or pressing 'c') slides it back.  The horizontal slide lives on the inner
-  // .drawer-unit so it never fights the outer element's vertical centering.
+  // .drawer-unit; the outer element is top-pinned (top = the live banner
+  // height + 16, i.e. the canvas's top band — set by applyCanvasRect), so the
+  // top pin never fights the slide, and the card + tab move as one unit.
   const controlDrawer = document.getElementById('control-drawer');
   const controlTab = document.getElementById('control-drawer-tab');
   let drawerOpen = false;
@@ -1121,6 +1130,10 @@
     }
     wrap.style.left = Math.max(0, leftBand) + 'px';
     wrap.style.top = topBand + 'px';
+    // Top-pin the control-panel wrapper to the same live value (the wrapper is
+    // stage-absolute, so the stage-relative topBand is its offset): its top
+    // edge always equals the canvas's top edge (banner height + 16).
+    controlDrawer.parentElement.style.top = topBand + 'px';
     wrap.style.right = '0px';
     wrap.style.bottom = bottomBand + 'px';
     const w = wrap.clientWidth, h = wrap.clientHeight;
