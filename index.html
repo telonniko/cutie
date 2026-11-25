@@ -1032,20 +1032,46 @@
     // stops it at the *unit's* left edge, but the wrapper is `left-2` and the
     // tab leaves a gap before the panel, so the panel pokes a few pixels (inset
     // minus gap, ~2px) back into view.  Fully clear it off the *stage's* left
-    // edge instead: read the panel's open (unshifted) right edge and shift by
-    // its distance to the stage's left edge (stage space, so it tracks the
-    // letterbox offset; below the caps the stage edge IS the viewport edge).
-    // The stage's overflow hidden clips the panel behind that edge, leaving
-    // the binder tab peeking in from it.  The brief class toggle runs
-    // synchronously with the transition off, so the browser never paints the
-    // intermediate open position — only the final closed frame is painted.
-    const panel = controlDrawer.children[0];
-    controlDrawer.style.transition = 'none';
-    controlDrawer.classList.remove('drawer-closed');
-    const shift = -(panel.getBoundingClientRect().right - stage.getBoundingClientRect().left);
-    controlDrawer.style.transition = animate ? '' : 'none';
-    controlDrawer.style.setProperty('--drawer-shift', shift + 'px');
-    controlDrawer.classList.toggle('drawer-closed', !drawerOpen);
+    // edge instead: the rest (unshifted) right edge minus the stage's left edge
+    // (stage space, so it tracks the letterbox offset; below the caps the stage
+    // edge IS the viewport edge). The stage's overflow hidden clips the panel
+    // behind that edge, leaving the binder tab peeking in from it.
+    //
+    // HYBRID (measured in place, animated on toggle, snapped on auto): the
+    // panel's rest position is its current rect minus the unit's current
+    // translateX (the --drawer-shift the .drawer-closed class applies, read
+    // from the computed transform; 0 when open), so measurement never toggles
+    // the class and the user's toggle animates BOTH directions.  The animate
+    // path sets the var first (usually a no-op value-wise) WITHOUT touching
+    // the class, then toggles the class, so the transform change happens with
+    // the CSS .3s transition active.  The animate=false paths (startup /
+    // resize / auto-placement) suppress the transition BEFORE any style
+    // change so the var + class toggle land instantly (no transition ever
+    // starts), then force a reflow and restore — same-tick geometry reads
+    // (the startup overlap decision, the canvas band) see the exact final
+    // position instead of a stale mid-transition rect.
+    const csTransform = getComputedStyle(controlDrawer).transform;
+    const tx = csTransform === 'none' ? 0 : parseFloat(csTransform.split(',')[4]);
+    const restRight = controlDrawer.children[0].getBoundingClientRect().right - tx;
+    const shift = -(restRight - stage.getBoundingClientRect().left);
+    if (animate) {
+      // User toggle: set the var (usually a no-op value-wise) WITHOUT
+      // touching the class, then toggle the class so the transform change
+      // happens with the CSS .3s transition active → slides both ways.
+      controlDrawer.style.transition = '';
+      controlDrawer.style.setProperty('--drawer-shift', shift + 'px');
+      controlDrawer.classList.toggle('drawer-closed', !drawerOpen);
+    } else {
+      // Startup / resize / auto: suppress the transition BEFORE any style
+      // change so the var + class toggle land instantly (no transition ever
+      // starts), force a reflow, then restore — same-tick geometry reads
+      // (startup overlap decision, canvas band) see the exact final position.
+      controlDrawer.style.transition = 'none';
+      controlDrawer.style.setProperty('--drawer-shift', shift + 'px');
+      controlDrawer.classList.toggle('drawer-closed', !drawerOpen);
+      void controlDrawer.offsetWidth;
+      controlDrawer.style.transition = '';
+    }
     controlTab.setAttribute('aria-expanded', String(drawerOpen));
     // The left band (and therefore the canvas rect) depends on the drawer's
     // position: track it per frame while the slide animates, or re-measure
