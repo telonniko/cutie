@@ -18,9 +18,9 @@
   body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   /* The stage: the bounding box the ENTIRE app lives in. Horizontally
      centered and TOP-anchored (fixed + inset:0 + margin:0 auto — flush with
-     the viewport top), capped at 1024x1080 so a larger window letterboxes it
+     the viewport top), capped at 1276x1366 so a larger window letterboxes it
      with the page's own background (the body is the same slate-900 as the
-     scene, so the edge is invisible). When the viewport is taller than 1080px
+     scene, so the edge is invisible). When the viewport is taller than 1366px
      the letterbox margin appears at the BOTTOM only; below the caps the stage
      IS the viewport. All chrome is anchored INSIDE it (absolute, never fixed)
      and the WebGL canvas fills its empty space (see #canvas-wrap below).
@@ -33,10 +33,10 @@
     position: fixed;
     inset: 0;
     margin: 0 auto;
-    width: min(100vw, 1024px);
-    height: min(100dvh, 1080px);
+    width: min(100vw, 1276px);
+    height: min(100dvh, 1366px);
     overflow: hidden;
-    --stage-h: min(100dvh, 1080px);
+    --stage-h: min(100dvh, 1366px);
   }
   /* #canvas-wrap fills the stage's EMPTY space — the stage minus the top
      banner, the left drawer band, and the bottom Move Log band (each with a
@@ -47,7 +47,7 @@
      also centers the cube in the empty space. */
   #canvas-wrap { position: absolute; inset: 0; }
   /* Stage-relative size caps (45% / 95% of the stage height). Replaces the
-     old max-h-[45vh] / max-h-[95vh]: identical below the 1080px cap, scaled
+     old max-h-[45vh] / max-h-[95vh]: identical below the 1366px cap, scaled
      to the stage above it. */
   .log-cap { max-height: calc(var(--stage-h) * 0.45); }
   .panel-cap { max-height: calc(var(--stage-h) * 0.95); }
@@ -88,10 +88,10 @@
   .drawer-closed { transform: translateX(var(--drawer-shift)); }
   /* The tab reads vertically, like a binder tab on the panel's right edge. */
   .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
-  /* Move-log buttons: fixed 32px-wide tokens that wrap (up to 12 per row),
-     styled to match the face buttons. The width is fixed — never a fluid grid
-     fraction — so the wrap layout is identical at every screen size. Three
-     visual states driven by state.playIndex:
+  /* Move-log buttons: fixed 32px-wide tokens that auto-wrap at the panel's
+     width, styled to match the face buttons. The width is fixed — never a
+     fluid grid fraction — so the wrap layout is identical at every screen
+     size. Three visual states driven by state.playIndex:
        pending — a move not yet reached (muted, dimmed)
        past    — a move that has already turned (faint "done" look)
        current — the move animating right now (bright amber highlight) */
@@ -117,9 +117,9 @@
 </head>
 <body class="bg-slate-900 text-slate-100">
   <!-- ======================= The stage (confines the whole app) =======================
-       Horizontally centered, TOP-anchored box, max 1024x1080 (see #stage
+       Horizontally centered, TOP-anchored box, max 1276x1366 (see #stage
        CSS): flush with the viewport top, and when the viewport is taller
-       than 1080px the letterbox margin sits at the bottom only. Everything
+       than 1366px the letterbox margin sits at the bottom only. Everything
        below — canvas, banner, drawers, toast, hint — is anchored
        to it. Outside the stage the body's slate-900 (== the scene
        background) shows through, so the letterbox is seamless. -->
@@ -164,15 +164,16 @@
 
   <!-- ======================= Move Log (bottom edge) — always-visible panel ======================= -->
   <!-- Always visible: no drawer, no tab, no toggle, no keyboard shortcut. The
-       wrapper is a full-stage-width, bottom-anchored strip that centers the
-       card and lets pointer events pass through everywhere except the card
-       itself (pointer-events-auto). The card hugs its content (up to 12 fixed
-       32px buttons per row) and caps at 45% of the STAGE height (.log-cap):
-       beyond that the log scrolls internally (.scroll-thin) and the current
-       move auto-scrolls into view. It overlays the stage's canvas with a
-       backdrop blur — the cube and camera are untouched. -->
-  <div class="absolute inset-x-0 bottom-0 z-20 pointer-events-none pb-3 flex justify-center">
-    <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl w-fit max-w-full">
+       wrapper spans the stage's full width MINUS a 4px gap at each edge
+       (left-1 / right-1), bottom-anchored, and lets pointer events pass
+       through everywhere except the card itself (pointer-events-auto). The
+       card FILLS that width — title row and moves alike — and caps at 45% of
+       the STAGE height (.log-cap): beyond that the log scrolls internally
+       (.scroll-thin) and the current move auto-scrolls into view. It overlays
+       the stage's canvas with a backdrop blur — the cube and camera are
+       untouched. -->
+  <div class="absolute left-1 right-1 bottom-0 z-20 pointer-events-none pb-3 flex">
+    <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl w-full">
       <div class="flex items-center justify-between gap-4 px-4 py-2.5 border-b border-white/10">
         <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Move Log</h2>
         <span id="log-count" class="text-[11px] text-slate-500">0 moves</span>
@@ -181,9 +182,9 @@
         <p id="log-empty" class="text-slate-500 text-xs leading-relaxed px-1 py-1">
           No moves yet. Use the buttons or keyboard to turn faces, then <b class="text-slate-300">Solve</b> to watch it come back.
         </p>
-        <!-- Fixed 32px buttons, up to 12 per row, wrapping to more rows and
-             centered; the max-width cap is 12 buttons + 11 gaps (0.125rem each). -->
-        <div id="log-list" class="flex flex-wrap justify-center gap-0.5 max-w-[calc(12*2rem+11*0.125rem)]"></div>
+        <!-- Fixed 32px buttons that auto-wrap at the panel width, wrapping to
+             as many rows as needed. -->
+        <div id="log-list" class="flex flex-wrap gap-0.5"></div>
       </div>
     </section>
   </div>
@@ -683,7 +684,7 @@
     statusDot.className = 'w-2.5 h-2.5 rounded-full ' + (colors[kind] || 'bg-slate-400');
   }
 
-  // --- The move log: fixed-width move-token buttons (up to 12 per row) ---
+  // --- The move log: fixed-width move-token buttons (auto-wrap at panel width) ---
   const logList = document.getElementById('log-list');
   const logEmpty = document.getElementById('log-empty');
   const logCount = document.getElementById('log-count');

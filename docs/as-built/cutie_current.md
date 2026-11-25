@@ -34,15 +34,15 @@ client-side with no external backend, and every library is loaded from a CDN.
 ### Stage & empty-rectangle canvas
 - **The stage (`#stage`)** is the bounding box the ENTIRE app lives in:
   `position: fixed; inset: 0; margin: 0 auto` with
-  `width: min(100vw, 1024px)`, `height: min(100dvh, 1080px)`,
+  `width: min(100vw, 1276px)`, `height: min(100dvh, 1366px)`,
   `overflow: hidden`. The height uses **100dvh (dynamic viewport height)**
   rather than `100vh`, so on mobile the stage tracks the *visible* area as
   the browser's toolbars collapse/expand instead of being pushed off the
   bottom of the screen by them. It is **horizontally centered and
   TOP-anchored** — flush with the viewport top, so when the viewport is
-  taller than 1080px the letterbox margin appears
+  taller than 1366px the letterbox margin appears
   at the **bottom only** (and on the sides whenever the viewport is wider than
-  1024px). Below the caps the stage IS the viewport and behaviour is
+  1276px). Below the caps the stage IS the viewport and behaviour is
   unchanged. The body is `bg-slate-900` — the SAME color as the scene clear
   color (`0x0f172a`) — so the letterbox margins are seamless (no visible
   edge). All chrome is anchored **inside** the stage (`absolute`, never
@@ -76,10 +76,10 @@ client-side with no external backend, and every library is loaded from a CDN.
   would vanish for the whole slide), and tracking stops when the card settles
   (≤0.5px from the target for 2 frames, ~3s safety net), snapping to the
   exactly-measured band. **Opening is an instant reflow** (no tracking).
-- **Stage-relative size caps**: `--stage-h: min(100dvh, 1080px)` replaces the
+- **Stage-relative size caps**: `--stage-h: min(100dvh, 1366px)` replaces the
   old viewport units — `.log-cap` (Move Log) = **45% of the stage height** and
   `.panel-cap` (control panel) = **95% of the stage height** (replaces the old
-  `max-h-[45vh]` / `max-h-[95vh]`; identical below the 1080px cap, scaled to
+  `max-h-[45vh]` / `max-h-[95vh]`; identical below the 1366px cap, scaled to
   the stage above it).
 
 ### Cubies
@@ -283,18 +283,19 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 ### Move Log panel (bottom edge) — always visible
 - **Not a drawer**: a panel **fixed at the bottom of the stage, always
   visible** — no tab, no toggle, no keyboard shortcut, no startup decision. The
-  full-**stage-width** bottom wrapper lets pointer events pass through
-  everywhere except the card itself, which is horizontally centered; it sits in
+  bottom wrapper spans the stage's width minus a **4px gap at each edge**
+  (`left-1` / `right-1`) and lets pointer events pass through
+  everywhere except the card itself, which **fills that full width**; it sits in
   the stage's bottom band (the canvas ends 16px above the log's reserved
   height, so the panel never covers the cube).
 - Glassy card (rounded, semi-transparent slate-900, backdrop blur, ring border)
-  that **hugs its content** (up to ~12 buttons wide).
+  that **fills the wrapper's width** (title row and moves alike).
 - **Header**: "Move Log" title + a live **move-count** (e.g. `12 moves`).
 - **Move Log**: a row of move-buttons that **wraps**, one per move token, each a
   **fixed 32px wide** (`2rem`, flex `0 0 auto` — never a fluid grid
-  fraction), **up to 12 per row**, centered. The list's max width is 12 buttons
-  + 11 gaps, so on narrow screens fewer than 12 fit per row and it wraps — no
-  horizontal overflow. Three visual states driven by the **cursor** — **past**
+  fraction), centered, and the row **auto-wraps at the panel's width** (no
+  fixed per-row cap), adding rows as moves are added — no horizontal
+  overflow. Three visual states driven by the **cursor** — **past**
   (index `< cursor`, faint done look), **pending** (index `>= cursor`, dim),
   **current** (the move animating right now / last applied, bright amber
   highlight) — with the current button auto-scrolling into view. The card grows
@@ -544,7 +545,7 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   face *keys* keep `Shift` as the prime modifier and `Alt`/`Option` as the
   half-turn modifier for desktop keyboards.
 - **Stage & empty-rectangle canvas**: the whole app lives in the centered,
-  top-anchored `#stage` box capped at 1024×1080 (seamless slate-900 letterbox
+  top-anchored `#stage` box capped at 1276×1366 (seamless slate-900 letterbox
   on larger windows), and the WebGL canvas fills only the stage's empty
   rectangle (stage minus the banner / drawer / Move Log bands, each + 16px
   clearance; the bottom band is the Move Log's reserved 3-row height) — so the
