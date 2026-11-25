@@ -208,7 +208,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   moves** (`tokens.length > MAX_MOVES`), the answer is refused *before*
   `resetMoves()` — the queue is never filled, the existing log is never
   cleared, and the cube is untouched. `toastMsg('Failed to find a solve
-  solution', 3000, false)` shows a plain (no-spinner) toast that fades out.
+  solution', 1000, false)` shows a plain (no-spinner) toast that fades out.
 
 ### Move limit (36-move cap)
 - A `MAX_MOVES = 36` constant (next to the `state` definition) caps the Move
@@ -216,7 +216,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
 - **Face turn**: `userTurn()` truncates the log to the cursor (dropping future
   moves) and *then* checks `state.moves.length >= MAX_MOVES`; at the cap it
   refuses the turn — no animation, no log entry — and shows
-  `toastMsg('Maximum moves allowed: 36', 3000, false)`. Undoing a move (Step
+  `toastMsg('Maximum moves allowed: 36', 1000, false)`. Undoing a move (Step
   ←) frees a slot, so the next turn is accepted. Scrambles (18–24 moves)
   never reach the cap and are unaffected.
 - **Solve**: `solve()` checks `tokens.length > MAX_MOVES` right after
@@ -348,7 +348,7 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   the Move-limit refusals). The card carries `transition-opacity duration-250`
   and **fades in/out over 250ms** (show: drop `hidden`, clear `opacity-0` on
   the next frame; hide: add `opacity-0`, then flip the wrapper to `hidden`
-  ~250ms later), auto-hiding after `ms` (the Move-limit toasts use 3000ms;
+  ~250ms later), auto-hiding after `ms` (the Move-limit toasts use 1000ms;
   solver-init messages keep the 4000ms default). A single `toastTimer`/
   `toastFadeTimer` pair is cleared on every new show.
 
@@ -480,7 +480,7 @@ Playwright tests for the **36-move Move Log cap** (`MAX_MOVES`): 36 keyboard
 `U` turns fill the log to exactly 36 (and leave the cube solved — 36 × 90° =
 9 full turns); a 37th turn is refused (log stays 36, the cube stays solved —
 nothing turned — and a no-spinner toast "Maximum moves allowed: 36" shows
-for ~3s and fades out); stepping back frees a slot so the next turn is
+for ~1s and fades out); stepping back frees a slot so the next turn is
 accepted; a mocked `Cube.prototype.solve` returning 80 moves is refused with a
 "Failed to find a solve solution" toast while the log and the cube stay
 untouched; and a Scramble after a Reset still yields 18–24 moves (the cap did
@@ -623,7 +623,7 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
 - **Move limit (`MAX_MOVES = 36`)**: the Move Log holds at most 36 moves. The
   two choke points enforce it: `userTurn()` checks `state.moves.length >=
   MAX_MOVES` *after* truncating to the cursor (so an undo frees a slot) and
-  refuses the turn with a "Maximum moves allowed: 36" toast (3s, fades, no
+  refuses the turn with a "Maximum moves allowed: 36" toast (1s, fades, no
   spinner); `solve()` checks `tokens.length > MAX_MOVES` after `parseAlg` and
   *before* `resetMoves()`, refusing over-cap answers with a "Failed to find a
   solve solution" toast while leaving the log and cube untouched. Scrambles

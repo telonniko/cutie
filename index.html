@@ -876,7 +876,7 @@
     // The Move Log is capped: once it holds MAX_MOVES moves, a face turn is
     // refused (the cube does not turn). Undoing a move frees a slot again.
     if (state.moves.length >= MAX_MOVES) {
-      toastMsg('Maximum moves allowed: ' + MAX_MOVES, 3000, false);
+      toastMsg('Maximum moves allowed: ' + MAX_MOVES, 1000, false);
       return;
     }
     renderMoves();
@@ -946,7 +946,7 @@
     // would not fit, refuse it WITHOUT touching the log or the cube (the
     // queue is never filled and the existing log is never cleared).
     if (tokens.length > MAX_MOVES) {
-      toastMsg('Failed to find a solve solution', 3000, false);
+      toastMsg('Failed to find a solve solution', 1000, false);
       return;
     }
     // Clear the log first (the cube's physical state is unaffected — it's the

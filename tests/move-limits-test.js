@@ -4,12 +4,12 @@
  *   The Move Log may hold at most 36 moves total.
  *     - Face turn: with 36 moves in the log, a 37th face turn is REFUSED —
  *       the cube does not turn, the move is not logged, and a toast
- *       "Maximum moves allowed: 36" appears (spinner hidden, ~3s, fades out).
+ *       "Maximum moves allowed: 36" appears (spinner hidden, ~1s, fades out).
  *       Undoing a move frees a slot, so the next turn is accepted.
  *     - Solve: if the solver returns more than 36 moves, the solution is
  *       REFUSED before the log is cleared or the queue is filled — the log
  *       and the cube stay untouched, and a toast "Failed to find a solve
- *       solution" appears (spinner hidden, ~3s, fades out).
+ *       solution" appears (spinner hidden, ~1s, fades out).
  *     - Scramble (18–24 moves) never hits the cap and is unaffected.
  *
  *   Driven entirely through the real UI: keyboard face keys (e.code based)
@@ -81,9 +81,9 @@ function findExecutable() {
   check('37th turn: toast visible + exact text', t.visible === true && t.text === 'Maximum moves allowed: 36', JSON.stringify(t));
   check('37th turn: toast spinner hidden', t.spinnerHidden === true, JSON.stringify(t));
   check('37th turn: cube did not turn (still solved)', (await isSolved()) === true, 'solved=' + await isSolved());
-  await page.waitForTimeout(4000); // 3s message + 250ms fade-out
+  await page.waitForTimeout(4000); // 1s message + 250ms fade-out (generous bound)
   t = await toastState();
-  check('37th turn: toast auto-hides after ~3s', t.visible === false, JSON.stringify(t));
+  check('37th turn: toast auto-hides after ~1s', t.visible === false, JSON.stringify(t));
 
   // ---- 3) Undoing a move frees a slot: the next turn is accepted. -----------
   await page.click('#btn-stepbwd');
@@ -112,7 +112,7 @@ function findExecutable() {
   check('over-cap solve: cube untouched (still unsolved)', (await isSolved()) === false, 'solved=' + await isSolved());
   await page.waitForTimeout(4000);
   t = await toastState();
-  check('over-cap solve: toast auto-hides after ~3s', t.visible === false, JSON.stringify(t));
+  check('over-cap solve: toast auto-hides after ~1s', t.visible === false, JSON.stringify(t));
 
   // ---- 5) The cap did not break scrambles (18–24 moves after a reset). ------
   await page.click('#btn-reset');
