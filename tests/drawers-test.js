@@ -47,10 +47,10 @@ function findExecutable() {
 //   - a narrow stage (phone-width) pushes the panel over the cube.
 //   - a wide stage leaves the panel clear of the re-centered cube.
 const scenarios = [
-  { w: 360,  h: 780,  btn: '#btn-scramble', label: 'Scramble', expectClose: true,  desc: 'narrow' },
-  { w: 1600, h: 900,  btn: '#btn-scramble', label: 'Scramble', expectClose: false, desc: 'wide'   },
-  { w: 360,  h: 780,  btn: '#btn-solve',    label: 'Solve',    expectClose: true,  desc: 'narrow' },
-  { w: 1600, h: 900,  btn: '#btn-solve',    label: 'Solve',    expectClose: false, desc: 'wide'   },
+  { w: 440,  h: 840,  btn: '#btn-scramble', label: 'Scramble', expectClose: true,  desc: 'narrow' },
+  { w: 1440, h: 900,  btn: '#btn-scramble', label: 'Scramble', expectClose: false, desc: 'wide'   },
+  { w: 440,  h: 840,  btn: '#btn-solve',    label: 'Solve',    expectClose: true,  desc: 'narrow' },
+  { w: 1440, h: 900,  btn: '#btn-solve',    label: 'Solve',    expectClose: false, desc: 'wide'   },
 ];
 
 // The single slide-out drawer: the left-edge control drawer.

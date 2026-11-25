@@ -34,9 +34,13 @@ client-side with no external backend, and every library is loaded from a CDN.
 ### Stage & empty-rectangle canvas
 - **The stage (`#stage`)** is the bounding box the ENTIRE app lives in:
   `position: fixed; inset: 0; margin: 0 auto` with
-  `width: min(100vw, 1024px)`, `height: min(100vh, 1080px)`, `overflow: hidden`.
-  It is **horizontally centered and TOP-anchored** — flush with the viewport
-  top, so when the viewport is taller than 1080px the letterbox margin appears
+  `width: min(100vw, 1024px)`, `height: min(100dvh, 1080px)`,
+  `overflow: hidden`. The height uses **100dvh (dynamic viewport height)**
+  rather than `100vh`, so on mobile the stage tracks the *visible* area as
+  the browser's toolbars collapse/expand instead of being pushed off the
+  bottom of the screen by them. It is **horizontally centered and
+  TOP-anchored** — flush with the viewport top, so when the viewport is
+  taller than 1080px the letterbox margin appears
   at the **bottom only** (and on the sides whenever the viewport is wider than
   1024px). Below the caps the stage IS the viewport and behaviour is
   unchanged. The body is `bg-slate-900` — the SAME color as the scene clear
@@ -72,7 +76,7 @@ client-side with no external backend, and every library is loaded from a CDN.
   would vanish for the whole slide), and tracking stops when the card settles
   (≤0.5px from the target for 2 frames, ~3s safety net), snapping to the
   exactly-measured band. **Opening is an instant reflow** (no tracking).
-- **Stage-relative size caps**: `--stage-h: min(100vh, 1080px)` replaces the
+- **Stage-relative size caps**: `--stage-h: min(100dvh, 1080px)` replaces the
   old viewport units — `.log-cap` (Move Log) = **45% of the stage height** and
   `.panel-cap` (control panel) = **95% of the stage height** (replaces the old
   `max-h-[45vh]` / `max-h-[95vh]`; identical below the 1080px cap, scaled to
@@ -247,7 +251,8 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   banner's bottom edge, so the banner never covers the cube (no top padding
   added to the canvas).
 - **Left**: Cutie logo — a small 3×3 grid of colored squares next to the title
-  and subtitle.
+  and subtitle. The title itself carries the credit: a small 10px slate-400
+  "by Qwen3.8" sits immediately to the right of the "Cutie" word.
 - **Right**: Status pill with a colored dot (emerald/sky/amber/slate for
   solved/scrambled/busy/idle), status text, and a live **Moves counter**.
 - Status values: "Solved", "Scrambled", "Turning…", "Scrambling…",
@@ -306,13 +311,17 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   or pointerdown** (via a capture-phase `document` listener that fires before the app's
   handlers), then removes itself from the DOM. Respects
   `prefers-reduced-motion: reduce` — skips the fade animation and removes immediately.
-- **Attribution (credit line)**: a small bottom-left line **of the stage**, "created with
-  qwen3.8:27b-mlx-4bit"; it is in the first-interaction dismiss list and fades
-  away (and is removed from the DOM) at the exact moment the "Drag to orbit"
-  hint dismisses.
+- **Credit line**: the old bottom-left attribution line **of the stage**
+  ("created with qwen3.8:27b-mlx-4bit") has been **removed** — it overlapped
+  the Move Log on narrow screens. The credit now lives in the banner next to
+  the "Cutie" title as a 10px slate-400 "by Qwen3.8" (see *Top bar* above),
+  and the first-interaction dismiss script now tracks only the drag hint.
 - **Solver toast**: a **stage-centered** dark card (flex-centered in a
-  full-stage overlay) with spinner ("Waking up the
-  ChipGPT-munk..."), also reused for error messages, auto-hiding after ~4s.
+  full-stage overlay) with a **27px spinner** (`w-[27px] h-[27px]`, 2px
+  border) and a **22.5px label** (`text-[1.40625rem]`), reading "Waking up
+  the solver..." — shrunk 25% from the old 36px spinner (3px border) / 30px
+  (`1.875rem`) label; card padding unchanged (`gap-3 px-6 py-4`). Also reused
+  for error messages, auto-hiding after ~4s.
 
 ---
 
@@ -390,9 +399,10 @@ moves and appending the solution. Run: `node tests/cursor-test.js`
 Playwright tests for the slide-out **control drawer's** auto-close-on-overlap
 and **overlap-rule startup** (the drawer opens iff its open position clears the
 cube's projected on-screen area — the very same test as the auto-close): the
-360×780 narrow viewport starts it **closed** (the panel would cover the cube)
-while the 1600×900 wide one starts it **open**; the test opens the
-drawer if it started closed, clicks **Scramble**/**Solve**, and reads the tab's
+440×840 narrow viewport (the design target device) starts it **closed** (the
+panel would cover the cube) while the 1440×900 wide one starts it **open**;
+the test opens the drawer if it started closed, clicks **Scramble**/**Solve**,
+and reads the tab's
 `aria-expanded` to confirm the drawer auto-closes when it would cover the cube and
 stays open when it doesn't. Run: `node tests/drawers-test.js`
 (`npm run test:drawer`).
@@ -504,8 +514,9 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   detail in §2 *Stage & empty-rectangle canvas*.
 - **Drawer + always-visible panel**: the layer buttons (left edge) hide behind a
   vertical tab in a slide-out drawer — the horizontal slide lives on an inner
-  `.drawer-unit` transform so it never fights the outer element's vertical
-  centering, and the toggle is a `click` on the tab (works on iPad, no keyboard)
+  `.drawer-unit` transform so it never fights the outer element's top pinning
+  (top = banner height + 16px, set live by the canvas-rect code), and the
+  toggle is a `click` on the tab (works on iPad, no keyboard)
   or the `C` key. When closed, the panel card sits fully off the stage's left
   edge (clipped by the stage's `overflow: hidden`), leaving the binder tab
   peeking in from that edge. The Move Log is the opposite: a fixed bottom panel that is

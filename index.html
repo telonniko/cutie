@@ -34,9 +34,9 @@
     inset: 0;
     margin: 0 auto;
     width: min(100vw, 1024px);
-    height: min(100vh, 1080px);
+    height: min(100dvh, 1080px);
     overflow: hidden;
-    --stage-h: min(100vh, 1080px);
+    --stage-h: min(100dvh, 1080px);
   }
   /* #canvas-wrap fills the stage's EMPTY space — the stage minus the top
      banner, the left drawer band, and the bottom Move Log band (each with a
@@ -76,8 +76,9 @@
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.03);
     transform: translateY(2px) scale(0.94);
   }
-  /* Control panel drawer: the panel slides in/out horizontally. The outer fixed
-     element owns the vertical centering (-translate-y-1/2), so the horizontal
+  /* Control panel drawer: the panel slides in/out horizontally. The outer
+     element is top-pinned (top-[68px] fallback; the JS in the module sets its
+     top to the live banner height + 16 in applyCanvasRect), so the horizontal
      slide lives here on its own transform. .drawer-closed translates the unit
      left by --drawer-shift (set in JS: unit width minus the tab width) so the
      rightmost tab stays on screen. The default is a large negative value so that
@@ -119,7 +120,7 @@
        Horizontally centered, TOP-anchored box, max 1024x1080 (see #stage
        CSS): flush with the viewport top, and when the viewport is taller
        than 1080px the letterbox margin sits at the bottom only. Everything
-       below — canvas, banner, drawers, toast, hint, attribution — is anchored
+       below — canvas, banner, drawers, toast, hint — is anchored
        to it. Outside the stage the body's slate-900 (== the scene
        background) shows through, so the letterbox is seamless. -->
   <div id="stage">
@@ -145,7 +146,7 @@
           <span class="w-2.5 h-2.5 rounded-[3px] bg-red-500"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-slate-100"></span><span class="w-2.5 h-2.5 rounded-[3px] bg-green-500"></span>
         </div>
         <div class="min-w-0">
-          <h1 class="text-sm font-semibold tracking-wide">Cutie</h1>
+          <h1 class="text-sm font-semibold tracking-wide">Cutie <span class="ml-1 text-[10px] font-normal tracking-normal text-slate-400">by Qwen3.8</span></h1>
           <p class="truncate text-[11px] text-slate-400 -mt-0.5">3D Rubik's Cube Solver</p>
         </div>
       </div>
@@ -199,7 +200,13 @@
        Solve, ← Step, Step →, Reset) in an inner bordered sub-panel.  Each face
        button is one fixed move, so a tap always does exactly one thing with no
        modifier — important on touch devices (e.g. iPad) that have no Shift key. -->
-  <div class="absolute left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+  <!-- Top-pinned: the wrapper's top sits at the top banner's height + 16px —
+       the same live value the canvas's top band uses (applyCanvasRect sets it
+       on startup / every resize / every band re-measure), so the panel's top
+       edge always equals the empty-space top. top-[68px] is the pre-JS
+       fallback (banner 52px + 16) so first paint is already sane. The card
+       and the binder tab share this one flex row, so they move as a unit. -->
+  <div class="absolute left-2 top-[68px] z-20 pointer-events-none">
     <div id="control-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
       <!-- The button panel: slides left to hide; the tab sits to its right. One
            bordered card stacks the face columns, the speed slider, and the
@@ -255,8 +262,8 @@
        Full-stage overlay, flex-centered, above canvas/drawers (z-50). -->
   <div id="solver-toast" class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none hidden">
     <div class="flex items-center gap-3 rounded-2xl bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 px-6 py-4 shadow-2xl">
-      <div class="w-9 h-9 border-[3px] border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-      <span class="text-[1.875rem] text-slate-200">Waking up the ChipGPT-munk...</span>
+      <div class="w-[27px] h-[27px] border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-[1.40625rem] text-slate-200">Waking up the solver...</span>
     </div>
   </div>
 
@@ -1010,7 +1017,9 @@
   // The panel hides off the left edge behind a vertical tab that is its rightmost
   // child.  Clicking/tapping the tab slides the panel out; clicking it again
   // (or pressing 'c') slides it back.  The horizontal slide lives on the inner
-  // .drawer-unit so it never fights the outer element's vertical centering.
+  // .drawer-unit; the outer element is top-pinned (top = the live banner
+  // height + 16, i.e. the canvas's top band — set by applyCanvasRect), so the
+  // top pin never fights the slide, and the card + tab move as one unit.
   const controlDrawer = document.getElementById('control-drawer');
   const controlTab = document.getElementById('control-drawer-tab');
   let drawerOpen = false;
@@ -1121,6 +1130,10 @@
     }
     wrap.style.left = Math.max(0, leftBand) + 'px';
     wrap.style.top = topBand + 'px';
+    // Top-pin the control-panel wrapper to the same live value (the wrapper is
+    // stage-absolute, so the stage-relative topBand is its offset): its top
+    // edge always equals the canvas's top edge (banner height + 16).
+    controlDrawer.parentElement.style.top = topBand + 'px';
     wrap.style.right = '0px';
     wrap.style.bottom = bottomBand + 'px';
     const w = wrap.clientWidth, h = wrap.clientHeight;
@@ -1570,10 +1583,6 @@
   };
   </script>
 
-  <!-- ======================= Bottom-left attribution ======================= -->
-  <div id="attribution" class="absolute bottom-4 left-4 z-20 pointer-events-none">
-    <p class="text-[11px] text-slate-400">created with qwen3.8:27b-mlx-4bit</p>
-  </div>
   </div><!-- /#stage -->
 
   <!-- ======================= Dismiss the drag-to-orbit hint ======================= -->
@@ -1582,13 +1591,10 @@
        and any button/tab click. A capture-phase document listener catches every
        such event no matter which element it starts from, and we do NOT stop
        propagation, so the app's own key/click handlers keep working. The hint is
-       pointer-events:none, so the dismissing interaction passes through it.
-       The bottom-left attribution (the "created with qwen3.8:27b-mlx-4bit" credit
-       card) is in this dismiss list as well, so it hides at the exact same
-       moment (first key press or pointer interaction) as the drag hint. -->
+       pointer-events:none, so the dismissing interaction passes through it. -->
   <script>
     (function hideHintsOnFirstInteraction() {
-      const hints = [document.getElementById('drag-hint'), document.getElementById('attribution')].filter(Boolean);
+      const hints = [document.getElementById('drag-hint')].filter(Boolean);
       if (!hints.length) return;
       const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       let dismissed = false;
