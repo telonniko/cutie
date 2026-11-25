@@ -58,13 +58,13 @@ The interface is a dark, glassy overlay floating over the 3D viewport.
 Everything — the canvas, the top banner, the Move Log, the control drawer, the
 toast — lives inside a single **stage** box that is **horizontally centered and
 anchored to the top of the window** (flush with the top edge), capped at
-**1024px wide × min(100dvh, 1080px) tall** — the height cap uses the
+**1276px wide × min(100dvh, 1366px) tall** — the height cap uses the
 *dynamic* viewport height (`100dvh`), so on mobile the stage tracks the
 visible area as browser toolbars collapse and expand. When the window is
 smaller than the caps the stage fills it and nothing changes; on a larger
 window the leftover space
 becomes a **letterbox margin** on the sides (and at the **bottom**, when the
-viewport is taller than 1080px). The page background is the same slate-900 as
+viewport is taller than 1366px). The page background is the same slate-900 as
 the 3D scene, so the margin blends in seamlessly and the app simply looks a
 little smaller — nothing moves or re-wraps. The chrome size caps are
 stage-relative (Move Log ≤ 45% and control panel ≤ 95% of the *stage* height,
@@ -101,15 +101,15 @@ The cube itself is **view-only** — turns come from the **face buttons** and
 ### Move Log (bottom edge) — an always-visible panel
 The Move Log is a panel **fixed at the bottom of the stage, always visible** —
 no drawer, no tab, no toggle, no keyboard shortcut. The wrapper spans the
-stage's full bottom width and centers a glassy card; the card hugs its content
-and the canvas/cube are untouched:
+stage's bottom width minus a **4px gap at each edge** (`left-1` / `right-1`),
+and the glassy card **fills that width** — title row and moves alike — with the
+canvas/cube untouched:
 - **Header** — "Move Log" title plus a live **move-count** (e.g. `12 moves`).
 - **Move buttons** — the executed moves shown as a **row of move-buttons that
   wraps**, one per token (`R`, `U'`, `F2`, …), styled to match the face buttons.
   Each button is a **fixed 32px wide**, so the layout is identical at every
-  screen size: **up to 12 per row**, wrapping to additional rows as moves are
-  added, centered. On narrow screens fewer than 12 fit per row and it simply
-  wraps — no horizontal overflow.
+  screen size: buttons **auto-wrap at the panel's width**, centered, adding
+  rows as moves are added — no horizontal overflow.
 - **Scroll** — the card grows with rows but caps at 45% of the **stage height**
   (a stage-relative cap, so it scales with the stage), then scrolls internally; the button for the move being turned
   **highlights first, then the face turns, then the next one** — moves before
