@@ -225,8 +225,8 @@ The Move Log holds at most **36 moves** in total — the cap applies to solves,
 scrambles, and hand face turns alike.
 
 - **Face turn at the cap** — with 36 moves in the log, a 37th turn is refused:
-  the cube does not turn and the move is not logged. A brief toast (~3
-  seconds, fading out) reads **Maximum moves allowed: 36**. Stepping back to
+  the cube does not turn and the move is not logged. A brief toast (~1
+  second, fading out) reads **Maximum moves allowed: 36**. Stepping back to
   undo a move frees a slot, so you can turn again.
 - **Solve at the cap** — if the solver comes back with a sequence longer than
   36 moves, the answer is refused *before* the log is cleared or the queue is
