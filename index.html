@@ -77,8 +77,10 @@
     transform: translateY(2px) scale(0.94);
   }
   /* Control panel drawer: the panel slides in/out horizontally. The outer
-     element is top-pinned (top-[68px] fallback; the JS in the module sets its
-     top to the live banner height + 16 in applyCanvasRect), so the horizontal
+     element's top is set in applyCanvasRect: stage height > 790 → vertically
+     centered between the banner bottom and the Move Log top (clamped not to
+     overlap the banner); otherwise top-pinned at the live banner height + 16
+     (top-[68px] is the pre-JS fallback). So the horizontal
      slide lives here on its own transform. .drawer-closed translates the unit
      left by --drawer-shift (set in JS: unit width minus the tab width) so the
      rightmost tab stays on screen. The default is a large negative value so that
@@ -172,7 +174,7 @@
        (.scroll-thin) and the current move auto-scrolls into view. It overlays
        the stage's canvas with a backdrop blur — the cube and camera are
        untouched. -->
-  <div class="absolute left-1 right-1 bottom-0 z-20 pointer-events-none pb-3 flex">
+  <div class="absolute left-1 right-1 bottom-0 z-20 pointer-events-none pb-1 flex">
     <section class="pointer-events-auto rounded-2xl bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-xl w-full">
       <div class="flex items-center justify-between gap-4 px-4 py-2.5 border-b border-white/10">
         <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Move Log</h2>
@@ -201,12 +203,14 @@
        Solve, ← Step, Step →, Reset) in an inner bordered sub-panel.  Each face
        button is one fixed move, so a tap always does exactly one thing with no
        modifier — important on touch devices (e.g. iPad) that have no Shift key. -->
-  <!-- Top-pinned: the wrapper's top sits at the top banner's height + 16px —
-       the same live value the canvas's top band uses (applyCanvasRect sets it
-       on startup / every resize / every band re-measure), so the panel's top
-       edge always equals the empty-space top. top-[68px] is the pre-JS
-       fallback (banner 52px + 16) so first paint is already sane. The card
-       and the binder tab share this one flex row, so they move as a unit. -->
+  <!-- Panel vertical placement: applyCanvasRect sets the wrapper's top on
+       startup / every resize / every band re-measure. Stage taller than 790px
+       → the unit is vertically centered between the banner bottom and the
+       Move Log top, clamped so it never overlaps the banner; otherwise it is
+       top-pinned at the banner height + 16px (the same live value the canvas's
+       top band uses). top-[68px] is the pre-JS fallback (banner 52px + 16) so
+       first paint is already sane. The card and the binder tab share this one
+       flex row, so they move as a unit. -->
   <div class="absolute left-2 top-[68px] z-20 pointer-events-none">
     <div id="control-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
       <!-- The button panel: slides left to hide; the tab sits to its right. One
@@ -1085,7 +1089,7 @@
     // resize / auto-placement) suppress the transition BEFORE any style
     // change so the var + class toggle land instantly (no transition ever
     // starts), then force a reflow and restore — same-tick geometry reads
-    // (the startup overlap decision, the canvas band) see the exact final
+    // (the startup width decision, the canvas band) see the exact final
     // position instead of a stale mid-transition rect.
     const csTransform = getComputedStyle(controlDrawer).transform;
     const tx = csTransform === 'none' ? 0 : parseFloat(csTransform.split(',')[4]);
@@ -1102,7 +1106,7 @@
       // Startup / resize / auto: suppress the transition BEFORE any style
       // change so the var + class toggle land instantly (no transition ever
       // starts), force a reflow, then restore — same-tick geometry reads
-      // (startup overlap decision, canvas band) see the exact final position.
+      // (startup width decision, canvas band) see the exact final position.
       controlDrawer.style.transition = 'none';
       controlDrawer.style.setProperty('--drawer-shift', shift + 'px');
       controlDrawer.classList.toggle('drawer-closed', !drawerOpen);
@@ -1125,7 +1129,7 @@
   //   LEFT   — closed drawer: the binder tab's right edge + 16;
   //            open drawer:  the panel card's right edge + 16
   //   BOTTOM — the Move Log's RESERVED height, computed as if it had EXACTLY
-  //            3 button rows (never the dynamic height): the wrapper's pb-3
+  //            3 button rows (never the dynamic height): the wrapper's pb-1
   //            bottom margin + the card's header row + 3 rows of move buttons
   //            with 2px gaps + the log area's py-2 padding + 16.
   // Every piece is computed from the real DOM/CSS, so the bands stay correct
@@ -1164,7 +1168,7 @@
       probe.remove();
     }
     return (
-      parseFloat(cs(logWrapEl).paddingBottom)                 // wrapper pb-3 margin
+      parseFloat(cs(logWrapEl).paddingBottom)                 // wrapper pb-1 margin
       + logHeaderEl.getBoundingClientRect().height             // the card's header row
       + 3 * rowH + 2 * gap                                     // 3 rows + 2 gaps
       + parseFloat(cs(logAreaEl).paddingTop)                   // log area py-2
@@ -1193,10 +1197,22 @@
     }
     wrap.style.left = Math.max(0, leftBand) + 'px';
     wrap.style.top = topBand + 'px';
-    // Top-pin the control-panel wrapper to the same live value (the wrapper is
-    // stage-absolute, so the stage-relative topBand is its offset): its top
-    // edge always equals the canvas's top edge (banner height + 16).
-    controlDrawer.parentElement.style.top = topBand + 'px';
+    // Panel top (the wrapper is stage-absolute, so stage-relative offsets):
+    // stage taller than 790 → vertically center the drawer unit in the empty
+    // space between the banner bottom and the Move Log top, clamped so it
+    // never overlaps the banner; otherwise top-pin it to the same live value
+    // as the canvas's top edge (banner height + 16).
+    const stageH = sr.height;
+    const bannerBottom = bannerEl.getBoundingClientRect().bottom - sr.top;
+    let panelTop;
+    if (stageH > 790) {
+      const logTop = logWrapEl.getBoundingClientRect().top - sr.top;
+      const unitH = controlDrawer.getBoundingClientRect().height;
+      panelTop = Math.max(bannerBottom, bannerBottom + (logTop - bannerBottom - unitH) / 2);
+    } else {
+      panelTop = bannerBottom + CLEARANCE;
+    }
+    controlDrawer.parentElement.style.top = panelTop + 'px';
     wrap.style.right = '0px';
     wrap.style.bottom = bottomBand + 'px';
     const w = wrap.clientWidth, h = wrap.clientHeight;
@@ -1302,72 +1318,28 @@
   // startup open/closed state (see decideStartupControlDrawer, defined below).
   requestAnimationFrame(() => requestAnimationFrame(decideStartupControlDrawer));
 
-  // True when an open drawer — the WHOLE panel including its tab, read from its
-  // own bounding box — geometrically overlaps the cube's on-screen area.  The
-  // cube's world-space AABB is projected to screen pixels through the camera; the
-  // drawer's rect is its getBoundingClientRect().  Used both to decide whether a
-  // Scramble/Solve (which animate the cube) should first slide the control
-  // drawer away so the animation stays visible, and to pick the STARTUP
-  // open/closed state of the control drawer (see decideStartupControlDrawer).
-  function drawerOverlapsCube(drawerEl) {
-    const d = drawerEl.getBoundingClientRect();
-    if (d.width === 0 || d.height === 0) return false;
-    const drawer = { l: d.left, r: d.right, t: d.top, b: d.bottom };
-    const box = new THREE.Box3().setFromObject(cubeGroup);
-    if (box.isEmpty()) return false;
-    const { min, max } = box;
-    const corners = [
-      [min.x, min.y, min.z], [max.x, min.y, min.z], [min.x, max.y, min.z], [max.x, max.y, min.z],
-      [min.x, min.y, max.z], [max.x, min.y, max.z], [min.x, max.y, max.z], [max.x, max.y, max.z],
-    ];
-    let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
-    const p = new THREE.Vector3();
-    // Project the cube into the CANVAS rect's coordinate space. The canvas
-    // backs the stage's empty rectangle (offset from the stage and viewport
-    // origins), so add its rect offset to keep the same coordinate space as
-    // the drawer's viewport-space getBoundingClientRect().
-    const cr = renderer.domElement.getBoundingClientRect();
-    for (const c of corners) {
-      p.set(c[0], c[1], c[2]).project(camera);
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue; // corner behind camera
-      const x = cr.left + (p.x * 0.5 + 0.5) * cr.width;
-      const y = cr.top + (-p.y * 0.5 + 0.5) * cr.height;
-      if (x < l) l = x; if (x > r) r = x;
-      if (y < t) t = y; if (y > b) b = y;
-    }
-    if (!Number.isFinite(l)) return false; // every corner projected off / behind the camera
-    // Standard axis-aligned rectangle intersection test.
-    return !(r < drawer.l || l > drawer.r || b < drawer.t || t > drawer.b);
-  }
   // --- Startup drawer state -------------------------------------------------
-  // On a wide-enough screen, open the control drawer so the face buttons (left
-  // edge) are visible.  On a narrow screen the panel would land on top of the
-  // cube, so it starts closed and only its binder tab peeks out.  The drawer is
-  // opened iff its open-position rect clears the cube's projected on-screen
-  // area — the very same test that auto-closes it before a Scramble/Solve
-  // animation.  The camera's view matrix is only finalised by a render, and this
-  // first arming tick can run before frame one, so refresh the matrix before
-  // measuring.  (The bottom Move Log panel is always visible and needs no
-  // startup decision.)
+  // The drawer starts OPEN on a wide stage (stage width > 750 px) so the face
+  // buttons (left edge) are visible, and starts CLOSED on a narrow stage
+  // (stage width <= 750 px), where only its binder tab peeks out.  The width
+  // is the #stage element's rect — min(100vw, 1276px), identical to the window
+  // width below the cap — measured here after the CDN CSS injection so the
+  // layout is final.  (The bottom Move Log panel is always visible and needs
+  // no startup decision.)
   function decideStartupControlDrawer() {
-    camera.updateMatrixWorld(true);
-    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-    // Tentatively open the drawer so its rect reflects its open position.
-    drawerOpen = true;
-    applyShift(false);
-    // Close it if it would cover the cube; otherwise leave it open.
-    drawerOpen = !drawerOverlapsCube(controlDrawer);
+    drawerOpen = stage.getBoundingClientRect().width > 750;
     applyShift(false);
   }
 
   // --- Primary buttons ---
   // Scramble and Solve animate the cube, so first make room: when the control
-  // drawer is open and its panel (with tab) would sit on top of the cube, slide
-  // it away so the animation stays visible. Non-overlapping (e.g. wide screens)
-  // is left open. The check runs with drawerOverlapsCube().
-  const closeControlDrawerOverCube = () => { if (drawerOpen && drawerOverlapsCube(controlDrawer)) closeControlDrawer(); };
-  document.getElementById('btn-scramble').onclick = () => { closeControlDrawerOverCube(); scramble(); };
-  document.getElementById('btn-solve').onclick = () => { closeControlDrawerOverCube(); solve(); };
+  // drawer is open on a narrow stage (stage width <= 750 px), slide it away so
+  // the animation stays visible. On a wide stage the drawer is left open.
+  // The stage width is re-measured at click time so it reflects the live
+  // viewport.
+  const closeControlDrawerOnNarrow = () => { if (drawerOpen && stage.getBoundingClientRect().width <= 750) closeControlDrawer(); };
+  document.getElementById('btn-scramble').onclick = () => { closeControlDrawerOnNarrow(); scramble(); };
+  document.getElementById('btn-solve').onclick = () => { closeControlDrawerOnNarrow(); solve(); };
   document.getElementById('btn-reset').onclick = resetCube;
   const stepFwdBtn = document.getElementById('btn-stepfwd');
   const stepBwdBtn = document.getElementById('btn-stepbwd');
