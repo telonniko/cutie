@@ -122,14 +122,15 @@ canvas/cube untouched:
 ### Control panel (left edge) — a slide-out drawer
 The control panel — the face buttons, the animation-speed slider, and the five
 action buttons — lives in a panel that **hides behind a tab** on the left edge,
-so the cube's empty space stays clear. Its **startup state follows one uniform
-rule: the drawer opens iff its open position clears the cube's projected
-on-screen area** — the very same overlap test that makes a Scramble/Solve
-**auto-close** it when it would slide onto the cube. Because the cube is now
-centered in the re-positioned canvas, the panel clears the cube at 1440×900,
-1600×900 and 3440×1440 (at 3440×1440 the re-centered cube now clears the panel
-by ~150px) — so the drawer starts **open** at those sizes — and stays **closed**
-at 360×780, where the panel would cover the cube. The tab is a vertical
+so the cube's empty space stays clear. Its **open/closed state is
+width-based**: the drawer **starts open when the stage is wider than 750px**
+and starts **closed at 750px or narrower**, and a Scramble/Solve **auto-closes**
+an open drawer only when the stage is 750px or narrower at click time — on a
+wide stage the clicks simply leave it open. So the drawer starts **open** on a
+wide screen and **closed** on a narrow one (e.g. 360×780), where only its
+binder tab peeks in from the edge. Vertically, the panel is **centered**
+between the banner and the Move Log when the stage is taller than 790px, and
+top-pinned just below the banner on shorter stages. The tab is a vertical
 **"Control Panel"** handle (like a tab in a binder) that sits on the panel's
 **right** edge; it is always visible — when closed, the panel slides fully off
 the stage's left edge (clipped by the stage) and the tab stays peeking in from
