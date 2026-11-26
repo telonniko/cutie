@@ -56,9 +56,9 @@ client-side with no external backend, and every library is loaded from a CDN.
   - **LEFT** — closed drawer: the binder tab's right edge + 16px; open drawer:
     the panel card's right edge + 16px.
   - **BOTTOM** — the Move Log's **reserved** height, computed as if it had
-    EXACTLY 3 button rows (never the dynamic height): the wrapper's `pb-3`
-    bottom margin + the card's header row + 3 rows of move buttons with 2px
-    gaps + the log area's `py-2` padding + 16px.
+    EXACTLY 3 button rows (never the dynamic height): the wrapper's `pb-1`
+    (4px) bottom margin + the card's header row + 3 rows of move buttons with
+    2px gaps + the log area's `py-2` padding + 16px.
   The cube lives at the world origin and the camera targets it, so the cube is
   always centered in its canvas — sizing the canvas to the empty rectangle
   therefore **centers the cube in the empty space at all viewport sizes**. The
@@ -76,6 +76,14 @@ client-side with no external backend, and every library is loaded from a CDN.
   would vanish for the whole slide), and tracking stops when the card settles
   (≤0.5px from the target for 2 frames, ~3s safety net), snapping to the
   exactly-measured band. **Opening is an instant reflow** (no tracking).
+- **Panel vertical placement**: `applyCanvasRect` sets the control
+  drawer's wrapper top at startup, on every resize, and on every band
+  re-measure — stage height **> 790px**: the drawer unit (card + tab) is
+  **vertically centered** between the banner bottom and the Move Log top
+  (equal gaps, clamped so the top never enters the banner); stage height
+  **≤ 790px**: **top-pinned** at banner + 16px (the first-paint fallback
+  `top-[68px]` is exactly banner 52px + 16px). The **canvas rect never
+  moves with the panel** — its top stays at banner + 16px in both branches.
 - **Stage-relative size caps**: `--stage-h: min(100dvh, 1366px)` replaces the
   old viewport units — `.log-cap` (Move Log) = **45% of the stage height** and
   `.panel-cap` (control panel) = **95% of the stage height** (replaces the old
@@ -308,20 +316,28 @@ buttons don't flicker while a sequence animates (see the *Cursor model* note in
   header count shows the total moves in the log.
 
 ### Control panel (left edge)
-- A **slide-out drawer** whose **startup state follows one uniform rule**:
-  `decideStartupControlDrawer()` tentatively opens the drawer and runs the very
-  same `drawerOverlapsCube()` test — the drawer **opens iff its open position
-  clears the cube's projected on-screen area** (otherwise it closes). Because
-  the cube is now centered in the re-positioned empty-rectangle canvas, the
-  panel clears the cube at **1440×900, 1600×900 and 3440×1440** — at 3440×1440
-  the re-centered cube now clears the panel by ~150px — so it starts **open**
-  at those sizes and **closed** at **360×780**, where the panel would cover the
-  cube. A Scramble/Solve likewise **auto-closes** the drawer only when its open
-  position would overlap the cube. While closed, the panel card is fully off
-  the stage's left edge (clipped by the stage's `overflow: hidden`) and the
-  vertical "Control Panel" binder tab — the card's rightmost child — stays
-  visible, peeking in from the stage's left edge. Tapping the tab (or pressing
-  `C`) slides the panel out; tapping again slides it back.
+- A **slide-out drawer** whose **open/closed state is width-based** (the old
+  overlap detection was deleted): `decideStartupControlDrawer()` opens the
+  drawer when the **stage is wider than 750px** and leaves it closed at 750px
+  or narrower, and `closeControlDrawerOnNarrow()` — wired into the Scramble/
+  Solve click handlers — slides an open drawer away only when the stage is
+  750px or narrower *at click time* (above 750px the clicks leave it open).
+  The boundary is exact: 750px → closed, 751px → open. Resizing the stage
+  does **not** re-evaluate the drawer's state — it only re-measures the canvas
+  band from the drawer's live position. While closed, the panel card is fully
+  off the stage's left edge (clipped by the stage's `overflow: hidden`) and
+  the vertical "Control Panel" binder tab — the card's rightmost child —
+  stays visible, peeking in from the stage's left edge. Tapping the tab (or
+  pressing `C`) slides the panel out; tapping again slides it back.
+- **Vertical placement** is set by `applyCanvasRect` (at startup, on every
+  resize, and on every band re-measure): stage height **> 790px** → the
+  drawer unit (card + tab) is **vertically centered** between the banner
+  bottom and the Move Log top (equal gaps, clamped so the top never enters
+  the banner); stage height **≤ 790px** → **top-pinned** at banner + 16px
+  (the first-paint fallback `top-[68px]` is exactly banner 52px + 16px). The
+  **canvas rect never moves with the panel** — its top stays at banner + 16px
+  in both branches. Accepted trade-off: on a ≲320px-wide stage with a full
+  36-move log, the clamped panel can slightly overlap the Move Log's top edge.
 - Glassy panel: ONE tall bordered card stacking the three button columns
   (each labelled CW / CCW / Half above its buttons), the Animation-speed
   slider, and the five action buttons in an inner bordered sub-panel. No top
@@ -426,16 +442,24 @@ moves and appending the solution. Run: `node tests/cursor-test.js`
 (`npm run verify:cursor`).
 
 ### `tests/drawers-test.js`
-Playwright tests for the slide-out **control drawer's** auto-close-on-overlap
-and **overlap-rule startup** (the drawer opens iff its open position clears the
-cube's projected on-screen area — the very same test as the auto-close): the
-440×840 narrow viewport (the design target device) starts it **closed** (the
-panel would cover the cube) while the 1440×900 wide one starts it **open**;
-the test opens the drawer if it started closed, clicks **Scramble**/**Solve**,
-and reads the tab's
-`aria-expanded` to confirm the drawer auto-closes when it would cover the cube and
-stays open when it doesn't. Run: `node tests/drawers-test.js`
-(`npm run test:drawer`).
+Playwright tests for the slide-out **control drawer's width threshold** (18
+checks): the rule is a stage-width threshold — the 440×840 narrow viewport
+(the design target device) starts it **closed**, the 1440×900 wide one starts
+it **open**, and the exact boundary is pinned (750px wide → closed, 751px →
+open); the test opens the drawer if it started closed, clicks
+**Scramble**/**Solve**, and reads the tab's `aria-expanded` to confirm the
+drawer auto-hides when the stage is 750px or narrower and stays open above
+it. Run: `node tests/drawers-test.js` (`npm run test:drawer`).
+
+### `tests/panel-center-test.js`
+Playwright tests for the **control panel's vertical placement** (7 checks):
+at 1440×900 (stage height 900 > 790) the drawer unit is **vertically
+centered** between the banner bottom and the Move Log top (equal gaps, no
+banner overlap); at 1440×700 (stage height 700 ≤ 790) it is **top-pinned** at
+banner + 16px — and in both branches the canvas rect's top stays at
+banner + 16px (the canvas never moves with the panel). Both viewports are
+wide enough that the drawer starts open, so no interaction is needed. Run:
+`node tests/panel-center-test.js`.
 
 ### `tests/press-test.js`
 Keyboard-shortcut tests:
@@ -523,7 +547,9 @@ The project-root `README.md` has: a title and description, a screenshot table
 + gallery link, how to run (double-click `index.html`), how to play (4 steps), a
 UI description (the capped, centered, top-anchored stage; the empty-rectangle
 canvas with the cube centered in the empty space; top banner; always-visible
-Move Log; slide-out control drawer with its overlap-rule startup state), a
+Move Log; slide-out control drawer with its width-threshold open/closed
+state — open when the stage is wider than 750px, closed otherwise — and its
+height-dependent vertical placement), a
 keyboard shortcuts table, a move-notation explanation, a **Move limit**
 section (the 36-move cap and its two refusal toasts), a
 how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
@@ -557,8 +583,10 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   detail in §2 *Stage & empty-rectangle canvas*.
 - **Drawer + always-visible panel**: the layer buttons (left edge) hide behind a
   vertical tab in a slide-out drawer — the horizontal slide lives on an inner
-  `.drawer-unit` transform so it never fights the outer element's top pinning
-  (top = banner height + 16px, set live by the canvas-rect code), and the
+  `.drawer-unit` transform so it never fights the outer element's top
+  placement (set live by the canvas-rect code: the unit centered between the
+  banner bottom and the Move Log top when the stage is taller than 790px,
+  else top-pinned at banner height + 16px), and the
   toggle is a `click` on the tab (works on iPad, no keyboard)
   or the `C` key. When closed, the panel card sits fully off the stage's left
   edge (clipped by the stage's `overflow: hidden`), leaving the binder tab
@@ -571,16 +599,15 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   until `load`/`ResizeObserver` (plus a couple of rAFs) report a stable width; auto
   re-measurements snap (no slide), so the panel never visibly slides or peeks on
   first load.
-- **Control drawer auto-close**: the control drawer's **startup state follows
-  the overlap rule**: `decideStartupControlDrawer()` tentatively opens the
-  drawer, runs the very same `drawerOverlapsCube()` test, and closes it if the
-  open position would cover the cube — so it starts **open** at 1440×900,
-  1600×900 and 3440×1440 (the cube is centered in the re-positioned
-  empty-rectangle canvas and clears the panel by ~150px at 3440×1440) and
-  **closed** at 360×780. When a Scramble or Solve is
-  triggered, the open drawer's bounding box is checked against the cube's
-  projected on-screen area via the same `drawerOverlapsCube()`; it is
-  auto-closed only if it would cover the cube.
+- **Drawer width threshold** (the overlap rule and its `drawerOverlapsCube()`
+  test were deleted): the control drawer's **startup state is a width test** —
+  `decideStartupControlDrawer()` sets it open when the stage is wider than
+  750px and closed otherwise (boundary: 750 → closed, 751 → open) — and
+  `closeControlDrawerOnNarrow()`, run by the Scramble/Solve click handlers,
+  re-measures the stage width at click time and slides the open drawer away
+  only when it is 750px or narrower (on a wide stage the clicks leave it
+  open). Resizing never re-evaluates the drawer's state; the ResizeObserver
+  only re-measures the canvas band from the drawer's live position.
 - **Batch animation**: scramble and solve clear the log, then enqueue the entire
   sequence up front (so the Move Log shows all buttons at once), then auto-advance
   via `startCurrent()` → `finishMove()` → `startCurrent()` … until the queue drains.
@@ -590,13 +617,14 @@ how-it-works section, and a tech list (Three.js, cubejs, Tailwind, vanilla JS).
   (solves play slightly slower than scrambles). Speed slider scales all durations.
 - **Touch pinch-zoom**: the `Orbit` class handles two-finger pinch zoom in addition
   to mouse-wheel zoom. Single-finger touch orbit is also supported.
-- **Drawer overlap detection**: `drawerOverlapsCube(drawerEl)` projects the cube's
-  world-space AABB through the camera to screen pixels **in the canvas rect's
-  coordinate space** (the canvas backs only the stage's empty rectangle, so the
-  canvas's rect offset from the viewport is added), then performs an axis-aligned
-  rectangle intersection test against the drawer's `getBoundingClientRect()`. It is
-  used both by the Scramble/Solve auto-close and by `decideStartupControlDrawer()` to
-  pick the control drawer's startup open/closed state.
+- **Panel vertical placement**: `applyCanvasRect` also places the drawer
+  wrapper — stage height > 790px → the unit (card + tab) vertically centered
+  between the banner bottom and the Move Log top, clamped so it never overlaps
+  the banner (accepted trade-off: on a ≲320px-wide stage with a full
+  36-move log the clamped panel can slightly overlap the Move Log top);
+  stage height ≤ 790px → top-pinned at banner + 16px (the `top-[68px]`
+  first-paint fallback is banner 52px + 16px exactly). The canvas rect never
+  moves with the panel — its top stays at banner + 16px in both branches.
 - **Render loop**: `requestAnimationFrame` loop with `paused` flag (set during
   screenshot capture). dt capped at 50ms to prevent spiral-of-death.
 - **`window.__RUBIKS__` hook**: `setCamera()` resets to home position; `setPixelRatio(pr)`

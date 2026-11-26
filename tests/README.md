@@ -21,7 +21,8 @@ any failure), so they double as smoke tests and as CI gates.
 | `cursor-test.js` | Tests the Move-Log "cursor" model | Node, `cubejs` | `npm run verify:cursor` or `node tests/cursor-test.js` |
 | `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tests/press-test.js` |
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
-| `drawers-test.js` | Control-drawer auto-close-on-overlap tests (startup state + Scramble/Solve) | Node, Playwright + Chromium | `node tests/drawers-test.js` |
+| `drawers-test.js` | Control-drawer width-threshold tests — 18 checks: startup state (open > 750px wide, closed ≤ 750px), the exact 750/751 boundary, Scramble/Solve auto-hide | Node, Playwright + Chromium | `node tests/drawers-test.js` |
+| `panel-center-test.js` | Control-panel vertical placement — 7 checks: centered when the stage is taller than 790px, top-pinned at banner + 16px otherwise; the canvas top never moves with the panel | Node, Playwright + Chromium | `node tests/panel-center-test.js` |
 | `step-buttons-test.js` | "← Step" / "Step →" enable/disable tracking with the cursor | Node, Playwright + Chromium | `npm run test:step` or `node tests/step-buttons-test.js` |
 | `move-limits-test.js` | Move Log 36-move cap: 37th turn refused with a toast, undo frees a slot, an over-36-move solve is refused (log + cube untouched), scramble still 18–24 | Node, Playwright + Chromium | `node tests/move-limits-test.js` |
 
@@ -43,8 +44,8 @@ these, since they are dev-only.
 - `cube-core-test.js` and `cursor-test.js` need **`cubejs`** (a devDependency,
   used only by the tooling — the app itself loads cubejs from a CDN). They run
   the cube-core math in a fresh Node VM context, so they need no browser.
-- `press-test.js`, `click-test.js`, and `drawers-test.js` need
-  **Playwright** and a headless Chromium. They drive the real `index.html` via
+- `press-test.js`, `click-test.js`, `drawers-test.js`, and
+  `panel-center-test.js` need **Playwright** and a headless Chromium. They drive the real `index.html` via
   the `window.__RUBIKS__` test hook.
 
 Each script resolves the project root relative to its own location
@@ -113,20 +114,42 @@ test hook.
 
 ## drawers-test.js
 
-Playwright-driven tests for **the slide-out control drawer's auto-close on
-overlap** (left edge). When the drawer is open and its panel (including the tab,
-read from the drawer's own bounding box) overlaps the cube's on-screen area,
-clicking **Scramble** or **Solve** slides that drawer closed first so the cube
-animation stays visible; on a non-overlapping layout it is left open. Each
-scenario also checks the width-dependent **startup** state of the drawer (narrow
-→ closed, wide → open), opens it if it started closed, clicks the action
-button, and reads the tab's `aria-expanded` to confirm the result:
+Playwright-driven tests for **the slide-out control drawer's width
+threshold** (left edge; 18 checks). The rule is a width test on the `#stage`
+element's width (min(100vw, 1276px) — identical to the window width below the
+cap): at **750px or narrower** the drawer starts **closed** and clicking
+**Scramble** or **Solve** slides it away first (auto-hide) so the cube
+animation stays visible; **above 750px** it starts **open** and the clicks
+leave it open. Each of the six scenarios asserts the startup state, opens the
+drawer if it started closed, clicks the action button, and reads the tab's
+`aria-expanded` to confirm the result:
 
-- narrow viewport (drawer covers the cube): Scramble and Solve **auto-close** it.
-- wide viewport (drawer clear of the cube): Scramble and Solve **leave it open**.
+- narrow viewport (440×840): Scramble and Solve **auto-hide** it.
+- wide viewport (1440×900): Scramble and Solve **leave it open**.
+- exact boundary: 750 wide → **closed**, 751 wide → **open**.
+
+Resizing the stage does not re-evaluate the drawer's state (only the canvas
+band is re-measured from the drawer's live position), so the tests pin the
+startup/click-time boundary rather than any resize behavior.
 
 The bottom Move Log panel is always visible — it has no drawer state and is not
 part of these tests.
+
+Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
+test hook.
+
+## panel-center-test.js
+
+Playwright-driven tests for **the control panel's vertical placement** (7
+checks). `applyCanvasRect` pins the drawer unit's wrapper top per stage
+height: stage height **> 790px** → the unit (card + tab) is **vertically
+centered** between the top banner's bottom edge and the Move Log wrapper's
+top edge (equal gaps, clamped so it never overlaps the banner); stage height
+**≤ 790px** → **top-pinned** at banner + 16px. The canvas rect must **not**
+follow the panel: in both branches its top stays at banner + 16px. Two
+viewports are tested — 1440×900 (centering branch) and 1440×700 (top-pin
+branch); both are wide enough that the drawer starts open, so no interaction
+is needed.
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.

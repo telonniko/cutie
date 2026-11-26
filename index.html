@@ -1058,9 +1058,11 @@
   // The panel hides off the left edge behind a vertical tab that is its rightmost
   // child.  Clicking/tapping the tab slides the panel out; clicking it again
   // (or pressing 'c') slides it back.  The horizontal slide lives on the inner
-  // .drawer-unit; the outer element is top-pinned (top = the live banner
-  // height + 16, i.e. the canvas's top band — set by applyCanvasRect), so the
-  // top pin never fights the slide, and the card + tab move as one unit.
+  // .drawer-unit; the outer element's top is placed by applyCanvasRect (the
+  // unit vertically centered between the banner bottom and the Move Log top
+  // when the stage is taller than 790px, else top-pinned at banner + 16), so
+  // the top placement never fights the slide, and the card + tab move as one
+  // unit.
   const controlDrawer = document.getElementById('control-drawer');
   const controlTab = document.getElementById('control-drawer-tab');
   let drawerOpen = false;
