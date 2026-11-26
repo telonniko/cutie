@@ -18,9 +18,9 @@
   body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   /* The stage: the bounding box the ENTIRE app lives in. Horizontally
      centered and TOP-anchored (fixed + inset:0 + margin:0 auto — flush with
-     the viewport top), capped at 1276x1366 so a larger window letterboxes it
+     the viewport top), capped at 1366x1276 so a larger window letterboxes it
      with the page's own background (the body is the same slate-900 as the
-     scene, so the edge is invisible). When the viewport is taller than 1366px
+     scene, so the edge is invisible). When the viewport is taller than 1276px
      the letterbox margin appears at the BOTTOM only; below the caps the stage
      IS the viewport. All chrome is anchored INSIDE it (absolute, never fixed)
      and the WebGL canvas fills its empty space (see #canvas-wrap below).
@@ -33,10 +33,10 @@
     position: fixed;
     inset: 0;
     margin: 0 auto;
-    width: min(100vw, 1276px);
-    height: min(100dvh, 1366px);
+    width: min(100vw, 1366px);
+    height: min(100dvh, 1276px);
     overflow: hidden;
-    --stage-h: min(100dvh, 1366px);
+    --stage-h: min(100dvh, 1276px);
   }
   /* #canvas-wrap fills the stage's EMPTY space — the stage minus the top
      banner, the left drawer band, and the bottom Move Log band (each with a
@@ -47,7 +47,7 @@
      also centers the cube in the empty space. */
   #canvas-wrap { position: absolute; inset: 0; }
   /* Stage-relative size caps (45% / 95% of the stage height). Replaces the
-     old max-h-[45vh] / max-h-[95vh]: identical below the 1366px cap, scaled
+     old max-h-[45vh] / max-h-[95vh]: identical below the 1276px cap, scaled
      to the stage above it. */
   .log-cap { max-height: calc(var(--stage-h) * 0.45); }
   .panel-cap { max-height: calc(var(--stage-h) * 0.95); }
@@ -119,9 +119,9 @@
 </head>
 <body class="bg-slate-900 text-slate-100">
   <!-- ======================= The stage (confines the whole app) =======================
-       Horizontally centered, TOP-anchored box, max 1276x1366 (see #stage
+       Horizontally centered, TOP-anchored box, max 1366x1276 (see #stage
        CSS): flush with the viewport top, and when the viewport is taller
-       than 1366px the letterbox margin sits at the bottom only. Everything
+       than 1276px the letterbox margin sits at the bottom only. Everything
        below — canvas, banner, drawers, toast, hint — is anchored
        to it. Outside the stage the body's slate-900 (== the scene
        background) shows through, so the letterbox is seamless. -->
@@ -1324,7 +1324,7 @@
   // The drawer starts OPEN on a wide stage (stage width > 750 px) so the face
   // buttons (left edge) are visible, and starts CLOSED on a narrow stage
   // (stage width <= 750 px), where only its binder tab peeks out.  The width
-  // is the #stage element's rect — min(100vw, 1276px), identical to the window
+  // is the #stage element's rect — min(100vw, 1366px), identical to the window
   // width below the cap — measured here after the CDN CSS injection so the
   // layout is final.  (The bottom Move Log panel is always visible and needs
   // no startup decision.)

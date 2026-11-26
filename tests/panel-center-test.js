@@ -12,11 +12,13 @@
  *   The canvas rect must NOT follow the panel: in both branches its top
  *   stays at banner bottom + 16px (verified via __RUBIKS__.canvasBands()).
  *
- *   Viewports (stage height = min(100dvh, 1366px), so it equals the
- *   viewport height here):
- *     - 1440x900 (stage 900 > 790)  -> centering branch
- *     - 1440x700 (stage 700 <= 790) -> top-pin branch
- *   Both are wide enough that the drawer starts OPEN, so no interaction is
+ *   Viewports (stage height = min(100dvh, 1276px), so it equals the
+ *   viewport height below the cap):
+ *     - 1440x900  (stage 900 > 790)  -> centering branch
+ *     - 1440x700  (stage 700 <= 790) -> top-pin branch
+ *     - 1440x1366 (stage capped at 1276 > 790) -> centering branch at the
+ *       height cap
+ *   All are wide enough that the drawer starts OPEN, so no interaction is
  *   needed beyond waiting for ready + the startup decision to settle.
  *
  * Needs: Node, Playwright + Chromium.  Run: `node tests/panel-center-test.js`
@@ -39,8 +41,9 @@ function findExecutable() {
 const TOL = 2; // px tolerance for "equal gaps" / "banner + 16" assertions
 
 const scenarios = [
-  { w: 1440, h: 900, branch: 'center', desc: 'centering (stage 900 > 790)' },
-  { w: 1440, h: 700, branch: 'top-pin', desc: 'top-pin (stage 700 <= 790)' },
+  { w: 1440, h: 900,  branch: 'center', desc: 'centering (stage 900 > 790)' },
+  { w: 1440, h: 700,  branch: 'top-pin', desc: 'top-pin (stage 700 <= 790)' },
+  { w: 1440, h: 1366, branch: 'center', desc: 'centering at height cap (stage 1276 > 790)' },
 ];
 
 // Stage-relative measurements, mirroring how applyCanvasRect computes them:

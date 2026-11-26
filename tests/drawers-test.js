@@ -3,7 +3,7 @@
  * drawer (left edge):
  *
  *   The rule is a viewport-width threshold on the #stage element's width
- *   (min(100vw, 1276px) — identical to the window width below the cap):
+ *   (min(100vw, 1366px) — identical to the window width below the cap):
  *   - stage width <= 750: the drawer starts CLOSED and clicking Scramble or
  *     Solve slides it closed again (auto-hide) before the cube animation.
  *   - stage width >  750: the drawer starts OPEN and stays open when
@@ -19,6 +19,8 @@
  *     - wide   stage   (>  750) + Solve    -> start open, stay open
  *     - boundary 750   (=  750) + Scramble -> start closed, auto-close
  *     - boundary 751   (>  750) + Scramble -> start open, stay open
+ *     - width cap      (viewport 1366 = stage width cap) + Scramble ->
+ *       stage width is capped at 1366 (> 750), so start open, stay open
  *
  *   The bottom Move Log panel is always visible — it has no drawer state and is
  *   not part of these tests.
@@ -41,7 +43,7 @@ function findExecutable() {
 }
 
 // The rule is a width threshold on the #stage element's width
-// (min(100vw, 1276px) — identical to the window width below the cap):
+// (min(100vw, 1366px) — identical to the window width below the cap):
 //   - stage width <= 750: drawer starts closed and auto-hides before the
 //     Scramble/Solve animation.
 //   - stage width >  750: drawer starts open and stays open.
@@ -52,6 +54,7 @@ const scenarios = [
   { w: 1440, h: 900,  btn: '#btn-solve',    label: 'Solve',    expectClose: false, desc: 'wide'   },
   { w: 750,  h: 840,  btn: '#btn-scramble', label: 'Scramble', expectClose: true,  desc: 'boundary 750' },
   { w: 751,  h: 840,  btn: '#btn-scramble', label: 'Scramble', expectClose: false, desc: 'boundary 751' },
+  { w: 1366, h: 900,  btn: '#btn-scramble', label: 'Scramble', expectClose: false, desc: 'width cap (stage 1366)' },
 ];
 
 // The single slide-out drawer: the left-edge control drawer.
