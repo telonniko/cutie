@@ -106,25 +106,33 @@ The Move Log is a panel that is **always visible** — no drawer, no tab, no
 toggle, no keyboard shortcut. By default it is **fixed at the bottom of the
 stage**: the wrapper spans the stage's bottom width minus a **4px gap at each
 edge** (`left-1` / `right-1`), and the glassy card **fills that width** —
-title row and moves alike — with the canvas/cube untouched. In the
-**narrow-tall band** — stage height **> 635px and ≤ 783.5px** — the same card
-**re-docks to the right edge** instead: a single vertical column of the same
-move-buttons with 16px clearances below the banner, at the right edge, and at
-the stage bottom, scrolling internally, and the canvas re-sizes around it so
-the **cube re-centers in the remaining space**. Above or below the band the
-bottom dock stands:
+title row and moves alike — with the canvas/cube untouched. When the stage is
+**784px tall or shorter** (no lower bound — the rule is height-only,
+width-independent) the same card **re-docks to the right edge** instead: a
+**headerless** card (title and count hidden in-band — only the move-buttons)
+with 16px clearances below the banner, at the right edge, and at the stage
+bottom. The buttons fill **columns top→bottom** (32px buttons, 2px gaps,
+31px row pitch), and the card **grows one column at a time** as moves
+accumulate — 1 column (58px) at 0 moves up to a 5-column cap (194px),
+**58/92/126/160/194px** for 1–5 columns. While the moves fit in the 5 columns
+there is **no scrollbar**; only below a ≈332px stage height does the log
+exceed the 5-column capacity and scroll internally (the width stays capped at
+194px). The canvas re-sizes around the live card width (16px + the card,
+re-measured as the columns grow), and the **cube re-centers in the remaining
+space**. Above 784px the bottom dock stands:
 - **Header** — "Move Log" title plus a live **move-count** (e.g. `12 moves`).
 - **Move buttons** — the executed moves shown as a **row of move-buttons that
   wraps**, one per token (`R`, `U'`, `F2`, …), styled to match the face buttons.
   Each button is a **fixed 32px wide**, so the layout is identical at every
   screen size: buttons **auto-wrap at the panel's width**, centered, adding
-  rows as moves are added — no horizontal overflow. (In the right-docked band
-  the same buttons form a single vertical column — 32px buttons, 2px gaps —
-  instead of wrapping rows.)
+  rows as moves are added — no horizontal overflow. (Right-docked, the same
+  buttons fill **columns** instead of rows — each column top→bottom, then the
+  next column rightward — 32px buttons, 2px gaps.)
 - **Scroll** — the card grows with rows but caps at 45% of the **stage height**
   (a stage-relative cap, so it scales with the stage), then scrolls internally
-  (in the right-docked band the 45% cap does not apply — the column fills the
-  card and scrolls internally there); the button for the move being turned
+  (right-docked, the 45% cap does not apply — the columns fill the card with
+  no scrollbar while the moves fit; only past the 5-column capacity, below a
+  ≈332px stage, does the card scroll internally); the button for the move being turned
   **highlights first, then the face turns, then the next one** — moves before
   the current step show as done, moves after it as pending — and the current
   button auto-scrolls into view.
@@ -142,8 +150,11 @@ an open drawer only when the stage is 750px or narrower at click time — on a
 wide stage the clicks simply leave it open. So the drawer starts **open** on a
 wide screen and **closed** on a narrow one (e.g. 360×780), where only its
 binder tab peeks in from the edge. Vertically, the panel is **centered**
-between the banner and the Move Log when the stage is taller than 790px, and
-top-pinned just below the banner on shorter stages. The tab is a vertical
+between the banner and the Move Log's top when the stage is taller than
+784px (bottom-docked log); at 784px or shorter (right-docked log) it is
+centered between the banner and the **stage's bottom** while the stage is at
+least 635px tall (the open panel fits), and pinned just below the banner
+below 635px (it may clip the stage's bottom). The tab is a vertical
 **"Control Panel"** handle (like a tab in a binder) that sits on the panel's
 **right** edge; it is always visible — when closed, the panel slides fully off
 the stage's left edge (clipped by the stage) and the tab stays peeking in from

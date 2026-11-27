@@ -77,11 +77,14 @@
     transform: translateY(2px) scale(0.94);
   }
   /* Control panel drawer: the panel slides in/out horizontally. The outer
-     element's top is set in applyCanvasRect: stage height > 790 → vertically
-     centered between the banner bottom and the Move Log top (clamped not to
-     overlap the banner); otherwise top-pinned at the live banner height + 16
-     (top-[68px] is the pre-JS fallback). So the horizontal
-     slide lives here on its own transform. .drawer-closed translates the unit
+     element's top is set in applyCanvasRect: stage height > 784 (bottom-
+     docked log) → vertically centered between the banner bottom and the
+     Move Log top (clamped not to overlap the banner); stage height <= 784
+     (right-docked log) → at 635 or above the panel fits, so it is centered
+     between the banner bottom and the STAGE bottom, below that it is
+     top-pinned at the live banner height + 16 (may clip at the stage
+     bottom — by decision, no guard; top-[68px] is the pre-JS fallback).
+     So the horizontal slide lives here on its own transform. .drawer-closed translates the unit
      left by --drawer-shift (set in JS: unit width minus the tab width) so the
      rightmost tab stays on screen. The default is a large negative value so that
      before JS measures the exact offset, the panel starts fully hidden rather
@@ -115,50 +118,87 @@
     box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45), 0 4px 12px rgba(245, 158, 11, 0.3);
     transform: translateY(-1px);
   }
-  /* --- Right-docked Move Log (band: NARROW_LOG_FIT_MIN < stage height <=
-     NARROW_LOG_FIT_MAX — see applyCanvasRect) ---
+  /* --- Right-docked Move Log (band: stage height <= NARROW_LOG_FIT_MAX —
+     see applyCanvasRect) ---
      .log-right re-docks the SAME card (no duplicate element — the counter,
      empty hint and auto-scroll JS all keep working) from the stage's bottom
      edge to its RIGHT edge: top = banner bottom + 16 (set live in
      applyCanvasRect), bottom = 16px from the stage bottom, 16px from the
-     right edge, fixed 58px wide (32px move button + 24px of #move-log's
-     px-3 + 2px ring, live-measured). Trade-offs in-band: the 45%-of-stage
-     .log-cap does NOT apply — the card height is the top/bottom anchors and
-     #move-log's own scroll handles the full column (36 moves x 31px ~=
-     1116px); the wrapping row becomes a single vertical column (32px
-     buttons, 2px gaps, no wrap); the header stacks title over count
-     compactly; the empty-state hint is hidden (the counter already says
-     "0 moves"). #stage-scoped selectors out-specificity the
-     runtime-injected Tailwind utilities. */
+     right edge. The card width is JS-driven (dockedLogCols / dockedLogWidth
+     in applyCanvasRect): 32px buttons × column count + 2px gaps + 24px of
+     #move-log's px-3 + 2px of the ring — 34c + 24, minimum the 1-column fit
+     (58px) at 0 moves; the width: 58px below is the pre-JS fallback for
+     that 1-column minimum. Trade-offs in-band: the 45%-of-stage .log-cap
+     does NOT apply — the card height is the top/bottom anchors and
+     #move-log's own scroll handles overflow, but ONLY past the 5-column cap
+     (see the .log-scroll rule below; while the moves fit, the card is
+     overflow hidden); the wrapping row becomes a COLUMN-MAJOR flow (each
+     column fills top→bottom, then the next column to the right); the header
+     row (title + count) is HIDDEN — the docked card is headerless, the
+     bottom dock keeps its full header; the empty-state hint is hidden.
+     #stage-scoped selectors out-specificity the runtime-injected Tailwind
+     utilities. */
   #stage .log-right {
     left: auto;         /* was left-1: place by the right edge + fixed width */
     right: 16px;        /* 16px from the stage's right edge */
     bottom: 16px;       /* was bottom-0: 16px gap at the stage bottom */
-    width: 58px;        /* 32px button + 24px px-3 + 2px ring (measured) */
+    width: 58px;        /* pre-JS fallback: the 1-column minimum; JS sets an
+                           inline width per column count (see applyCanvasRect) */
     padding-bottom: 0;  /* was pb-1: the gap is the 16px bottom edge now */
   }
   /* The section fills the wrapper's anchored height; make it a column so
-     #move-log takes exactly the space left under the header row and scrolls
-     internally (overflow-y-auto is already on it). */
+     #move-log takes the whole card (the header row is hidden in-band) and
+     scrolls internally (overflow-y auto in the .log-scroll case). */
   #stage .log-right > section {
     display: flex; flex-direction: column;
-    overflow: hidden; /* pins the 58px wrapper width: flex min-width:auto can't stretch the card if the header text grows */
+    overflow: hidden; /* pins the JS-set wrapper width: flex min-width:auto can't stretch the card if content grows */
   }
-  /* Compact header: title and count stacked + centered in the 58px width. */
-  #stage .log-right > section > div:first-child {
-    flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px;
-  }
-  #stage .log-right h2 { font-size: 10px; letter-spacing: normal; }
-  #stage .log-right #log-count { font-size: 10px; }
-  /* In-band log area: fill the remaining card height (no 45% cap) ... */
-  #stage .log-right #move-log { flex: 1 1 0; min-height: 0; max-height: none; }
-  /* ... as a single vertical column of 32px buttons, 2px gaps, no wrapping. */
+  /* Headerless in-band: title and count stay in the DOM (single source of
+     truth for the bottom dock) but are not rendered. */
+  #stage .log-right > section > div:first-child { display: none; }
+  /* In-band log area: fill the remaining card height (no 45% cap). The 4px
+     top/bottom inset (instead of py-2's 16px) leaves headroom so the perCol
+     buttons (31*perCol - 2px) sit inside the card; the horizontal padding
+     keeps px-3's 12px — exactly the 24px of horizontal the 34c + 24 card
+     width formula uses — so the columns are not left-aligned against the
+     card edge with dead space. While the moves fit, no internal scroll:
+     overflow hidden clips the column flow at the card edge ... */
+  #stage .log-right #move-log { flex: 1 1 0; min-height: 0; max-height: none; overflow: hidden; padding: 4px 12px; }
+  /* ... Scroll fallback: the moves exceed the 5-column cap × per-column
+     capacity (perCol = floor(#move-log clientHeight / 31px live); clientH
+     = stageH − 84: banner 52 + top 16 + bottom 16 — the log's 4px vertical
+     padding sits INSIDE the client area, and the 1px ring is a
+     layout-neutral box-shadow, so neither subtracts) — only possible below
+     a stage height ≈ 332px: 5 × floor((332 − 84)/31) = 5 × 8 = 40 ≥ 36,
+     and 331 drops to 5 × 7 = 35 < 36. Then
+     applyCanvasRect toggles .log-scroll and #move-log scrolls vertically;
+     the width stays at the 5-column cap. */
+  #stage .log-right #move-log.log-scroll { overflow-y: auto; }
+  /* ... as a row of explicit .log-col column wrappers: renderMoves splits
+     the buttons COLUMN-MAJOR (each column fills top→bottom, then the next
+     column to the right) — the first c-1 columns hold exactly perCol
+     buttons, the last column the remainder. Explicit wrappers instead of
+     flex-wrap are what make the .log-scroll fallback work: past the
+     5-column cap the extra moves grow the LAST column downward and
+     #move-log's vertical scroll reaches them — flex-wrap would start a 6th
+     column past the card's right edge, clipped by the section's overflow
+     hidden and unreachable (measured: it spawned rightward columns at
+     182/216/250px and never grew scrollHeight). */
   #stage .log-right #log-list {
-    flex-direction: column; flex-wrap: nowrap; align-items: center;
+    flex-direction: row; flex-wrap: nowrap; align-items: flex-start;
+    /* The column row (34c − 2px) is one 2px gap narrower than the list
+       (34c, the card width minus the 24px px-3 horizontal padding), so
+       centering puts each outer column 12px + 1px from its card edge —
+       symmetric, no dead space. */
+    justify-content: center;
   }
-  /* The empty-state hint is hidden in-band (the counter shows "0 moves").
-     !important beats the inline display renderMoves() sets for the bottom
-     dock. */
+  #stage .log-right #log-list .log-col {
+    display: flex; flex-direction: column; gap: 2px;
+    width: 2rem; /* one 32px button column; #log-list's gap-0.5 spaces the columns */
+  }
+  /* The empty-state hint is hidden in-band (headerless card: nothing else
+     to say "0 moves"). !important beats the inline display renderMoves()
+     sets for the bottom dock. */
   #stage .log-right #log-empty { display: none !important; }
 </style>
 </head>
@@ -249,13 +289,16 @@
        button is one fixed move, so a tap always does exactly one thing with no
        modifier — important on touch devices (e.g. iPad) that have no Shift key. -->
   <!-- Panel vertical placement: applyCanvasRect sets the wrapper's top on
-       startup / every resize / every band re-measure. Stage taller than 790px
-       → the unit is vertically centered between the banner bottom and the
-       Move Log top, clamped so it never overlaps the banner; otherwise it is
-       top-pinned at the banner height + 16px (the same live value the canvas's
-       top band uses). top-[68px] is the pre-JS fallback (banner 52px + 16) so
-       first paint is already sane. The card and the binder tab share this one
-       flex row, so they move as a unit. -->
+       startup / every resize / every band re-measure. Stage taller than 784px
+       (bottom-docked log) → the unit is vertically centered between the
+       banner bottom and the Move Log top, clamped so it never overlaps the
+       banner. At 784 or below (right-docked log) → at 635 or above the unit
+       is centered between the banner bottom and the stage bottom; below
+       635 it is top-pinned at the banner height + 16px (the same live value
+       the canvas's top band uses; may clip at the stage bottom). top-[68px]
+       is the pre-JS fallback (banner 52px + 16) so first paint is already
+       sane. The card and the binder tab share this one flex row, so they
+       move as a unit. -->
   <div class="absolute left-2 top-[68px] z-20 pointer-events-none">
     <div id="control-drawer" class="drawer-unit drawer-closed flex items-stretch gap-1.5">
       <!-- The button panel: slides left to hide; the tab sits to its right. One
@@ -754,22 +797,65 @@
     logCount.textContent = n + (n === 1 ? ' move' : ' moves');
     logEmpty.style.display = n ? 'none' : 'block';
     logList.innerHTML = '';
-    state.moves.forEach((mv, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.tabIndex = -1;
-      b.textContent = mv;
-      let cls = 'move-btn ';
-      if (i === state.playIndex) cls += 'current';
-      else if (i < state.cursor) cls += 'past';
-      else cls += 'pending';
-      b.className = cls;
-      logList.appendChild(b);
+    // Right dock: the log flows COLUMN-MAJOR (each column fills top→bottom,
+    // then the next column to the right) and the buttons are split into
+    // explicit .log-col wrappers — the first c-1 columns hold exactly
+    // perCol buttons, the last column the remainder (c as in
+    // dockedLogCols). Past the 5-column cap the extras therefore grow the
+    // last column and #move-log's vertical scroll reaches them; a plain
+    // flex-wrap would start a 6th column past the card's right edge (clipped
+    // and unreachable — see the CSS comment on #log-list).
+    const rightDocked = logWrapEl.classList.contains('log-right');
+    // The perCol that ACTUALLY drives the split below (also used for the
+    // split signature, so a later resize compares against the split in
+    // place rather than re-measuring). 0 when bottom-docked (unused).
+    const perCol = rightDocked ? dockedLogPerCol() : 0;
+    let groups;
+    if (rightDocked && n) {
+      const c = Math.min(Math.max(Math.ceil(n / perCol), 1), 5);
+      groups = [];
+      for (let k = 0; k < c; k++) {
+        const from = k * perCol;
+        groups.push(state.moves.slice(from, k === c - 1 ? n : from + perCol));
+      }
+    } else {
+      groups = [state.moves];
+    }
+    // Split signature (see applyCanvasRect): tells a later resize whether
+    // the .log-col split is still valid for the live perCol.
+    dockedSplitSig = rightDocked ? perCol + 'x' + n : 'bottom';
+    let i = 0;
+    groups.forEach(group => {
+      let parent = logList;
+      if (rightDocked) {
+        const col = document.createElement('div');
+        col.className = 'log-col';
+        logList.appendChild(col);
+        parent = col;
+      }
+      group.forEach(mv => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.tabIndex = -1;
+        b.textContent = mv;
+        let cls = 'move-btn ';
+        if (i === state.playIndex) cls += 'current';
+        else if (i < state.cursor) cls += 'past';
+        else cls += 'pending';
+        b.className = cls;
+        parent.appendChild(b);
+        i++;
+      });
     });
-    const cur = logList.children[state.playIndex];
+    const cur = logList.querySelector('.move-btn.current');
     // The panel is always visible, so scroll the current move into view
     // unconditionally (block: 'nearest' touches only the log's own scroll).
     if (cur) cur.scrollIntoView({ block: 'nearest' });
+    // Right dock: adding/clearing moves can change the column count and thus
+    // the card width (and the log-scroll fallback). Run a layout pass so the
+    // canvas right band (16 + live card width) re-measures and the cube
+    // re-centers — snap, no animation.
+    if (logWrapEl.classList.contains('log-right')) applyCanvasRect();
   }
 
   // --- Move execution ---
@@ -1103,9 +1189,9 @@
   // The panel hides off the left edge behind a vertical tab that is its rightmost
   // child.  Clicking/tapping the tab slides the panel out; clicking it again
   // (or pressing 'c') slides it back.  The horizontal slide lives on the inner
-  // .drawer-unit; the outer element's top is placed by applyCanvasRect (the
-  // unit vertically centered between the banner bottom and the Move Log top
-  // when the stage is taller than 790px, else top-pinned at banner + 16), so
+  // .drawer-unit; the outer element's top is placed by applyCanvasRect (see the
+  // panel-top math there: centered on tall stages, centered/stage-top-pinned
+  // on the right-docked band), so
   // the top placement never fights the slide, and the card + tab move as one
   // unit.
   const controlDrawer = document.getElementById('control-drawer');
@@ -1187,27 +1273,56 @@
   // centers the cube in the empty space. All offsets are stage-relative
   // (the wrap is absolutely positioned inside #stage).
   const CLEARANCE = 16;
-  // Right-docked Move Log band (height-only, width-independent): 635 < stage
-  // height <= 783.5. Measured at 440x840: banner 52px; open Control Panel
-  // 551px (pinned at banner + 16 for stage height <= 790); 3-row Move Log
-  // card 144.5px (37.5px header + 107px log area; 32x29 buttons, 2px gap,
-  // 31px row pitch). NARROW_LOG_FIT_MIN = 52 + 16 + 551 + 16 — the panel +
-  // clearances alone, the smallest stage the pinned panel still fits;
-  // NARROW_LOG_FIT_MAX = 52 + 16 + 551 + 16 + 144.5 + 4 — the bottom-dock
-  // fit minimum with a 3-row log, + the wrapper's 4px bottom gap. Below the
-  // min the bottom dock stays degenerate by explicit decision (no guards);
-  // above the max the bottom dock has room, so it stands. ~1-2px of platform
-  // metric drift (fonts/DPR) shifts the true fit point by the same amount;
-  // the worst case just above the boundary is the 16px clearance eroded by
-  // ~1-2px — an actual overlap would require H < 767.5, which is in-band, so
-  // the constant is safe without slack.
-  const NARROW_LOG_FIT_MIN = 635;
-  const NARROW_LOG_FIT_MAX = 783.5;
+  // Right-docked Move Log band (height-only, width-independent): stage
+  // height <= NARROW_LOG_FIT_MAX (784, inclusive). Above 784 the bottom dock
+  // has room for the panel + a 3-row log, so it stands; at 784 and below the
+  // log re-docks to the right edge. There is NO lower bound: below the old
+  // NARROW_LOG_FIT_MIN (635) the log is right-docked too — the old
+  // degenerate "bottom-docked but the pinned panel doesn't fit" case is
+  // resolved (the panel pins at banner + 16 and may clip at the stage
+  // bottom, by explicit decision). 784 rounds the live-measured bottom-dock
+  // fit minimum 783.5 up to the whole px and makes the fit point 784 itself
+  // right-dock: 783.5 = 52 + 16 + 551 + 16 + 144.5 + 4 (banner 52px, clear-
+  // ances, the 551px open Control Panel, 144.5px 3-row Move Log card, and
+  // the wrapper's 4px bottom gap; 32x29 buttons, 2px gap, 31px row pitch).
+  // ~1-2px of platform metric drift (fonts/DPR) shifts the true fit point by
+  // the same amount; the worst case just above the boundary is the 16px
+  // clearance eroded by ~1-2px — an actual overlap would require H < 767.5,
+  // which is in-band, so the constant is safe without slack.
+  const NARROW_LOG_FIT_MAX = 784;
+  // Control-Panel fit bound for the right-docked band (its placement only):
+  // 52 + 16 + 551 + 16 — banner 52px + the top/bottom clearances + the 551px
+  // open panel; the smallest stage the centered panel still fits. At 635
+  // centering and pinning agree (panelTop = 52 + (635 - 52 - 551)/2 = 68),
+  // so the branch switch is continuous.
+  const PANEL_FIT_MIN = 635;
+  // Signature of the current .log-col split (perCol × move count). When a
+  // vertical resize changes perCol, the split goes stale — applyCanvasRect
+  // re-runs renderMoves to re-split (see the docked branch below).
+  let dockedSplitSig = null;
   const bannerEl = stage.querySelector('header');
   const logWrapEl = Array.from(stage.children).find(el => el.contains(document.getElementById('move-log')));
   const logCardEl = logWrapEl.firstElementChild;
   const logHeaderEl = logCardEl.firstElementChild;
   const logAreaEl = document.getElementById('move-log');
+
+  // Per-column capacity of the right-docked card, measured live: floor of the
+  // #move-log clientHeight over the 31px row pitch (29px button + 2px gap).
+  // The docked card is headerless (see the .log-right CSS), so clientH =
+  // stageH − 84 (banner 52 + top 16 + bottom 16 — the log's 4px vertical
+  // padding sits INSIDE the client area, and the 1px ring is a
+  // layout-neutral box-shadow, so neither subtracts): 700 → 616 → 19;
+  // 636 → 552 → 17; 450 → 366 → 11; 400 → 316 → 10; 320 → 236 → 7.
+  function dockedLogPerCol() {
+    return Math.max(1, Math.floor(logAreaEl.clientHeight / 31));
+  }
+  // Column count of the right-docked card: min(max(ceil(moves / perCol), 1), 5)
+  // — starts at 1 column (58px) at 0 moves, grows to the 5-column cap (194px).
+  function dockedLogWidth(c) { return 34 * c + 24; } /* 58/92/126/160/194, c = 1..5 */
+  function dockedLogCols() {
+    const n = state.moves.length;
+    return Math.min(Math.max(Math.ceil(n / dockedLogPerCol()), 1), 5);
+  }
 
   // The Move Log's reserved height as if it had exactly 3 rows of move
   // buttons, computed from the real DOM/CSS (not the dynamic height).
@@ -1261,39 +1376,76 @@
     }
     wrap.style.left = Math.max(0, leftBand) + 'px';
     wrap.style.top = topBand + 'px';
-    // Right-docked Move Log band (see NARROW_LOG_FIT_MIN/MAX above): in-band,
+    // Right-docked Move Log band (see NARROW_LOG_FIT_MAX above): in-band,
     // the SAME card re-docks to the stage's right edge — a class toggle + a
-    // live top, no duplicate element — so the canvas keeps 16px + the docked
-    // card's live width on the right and reserves NOTHING at the bottom;
-    // out-of-band the card sits at the bottom (right inset 0, bottom band =
-    // reservedLogBand) as before. This runs on startup, every resize, and
-    // every drawer-slide frame (startBandTracking), so crossing a band edge
-    // re-docks/undocks with the existing snap — no animation for the log.
-    // The toggle + top land BEFORE the panel math: the stage > 790 centering
-    // branch measures the log's top, which the dock changes.
-    const logRightDocked = stageH > NARROW_LOG_FIT_MIN && stageH <= NARROW_LOG_FIT_MAX;
+    // live top + a live width, no duplicate element — so the canvas keeps
+    // 16px + the docked card's live width on the right and reserves NOTHING
+    // at the bottom; out-of-band the card sits at the bottom (right inset 0,
+    // bottom band = reservedLogBand) as before. This runs on startup, every
+    // resize, and every drawer-slide frame (startBandTracking), so crossing
+    // a band edge re-docks/undocks with the existing snap — no animation for
+    // the log. The toggle + top + width land BEFORE the panel math: the
+    // bottom-dock centering branch measures the log's top, which the dock
+    // changes.
+    const logRightDocked = stageH <= NARROW_LOG_FIT_MAX;
     logWrapEl.classList.toggle('log-right', logRightDocked);
     logWrapEl.style.top = logRightDocked ? (bannerBottom + CLEARANCE) + 'px' : '';
-    // Panel top (the wrapper is stage-absolute, so stage-relative offsets):
-    // stage taller than 790 → vertically center the drawer unit in the empty
-    // space between the banner bottom and the Move Log top, clamped so it
-    // never overlaps the banner; otherwise top-pin it to the same live value
-    // as the canvas's top edge (banner height + 16). The band ends at 783.5
-    // < 790, so an in-band panel is always the pinned one.
+    // Panel top (the wrapper is stage-absolute, so stage-relative offsets).
+    // Stage taller than 784 (bottom-docked log) → vertically center the
+    // drawer unit in the empty space between the banner bottom and the Move
+    // Log top, clamped so it never overlaps the banner. Stage 784 or below
+    // (right-docked log) → at 635 or above the panel fits alongside the log,
+    // so center it between the banner bottom and the STAGE bottom (the
+    // right-docked log no longer spans the bottom edge, so the whole stage
+    // height is available); below 635 top-pin it to the same live value as
+    // the canvas's top edge (banner height + 16) — it may overflow the
+    // stage bottom and clip, by explicit decision (no guard).
     let panelTop;
-    if (stageH > 790) {
+    if (stageH > NARROW_LOG_FIT_MAX) {
       const logTop = logWrapEl.getBoundingClientRect().top - sr.top;
       const unitH = controlDrawer.getBoundingClientRect().height;
       panelTop = Math.max(bannerBottom, bannerBottom + (logTop - bannerBottom - unitH) / 2);
+    } else if (stageH >= PANEL_FIT_MIN) {
+      const unitH = controlDrawer.getBoundingClientRect().height;
+      panelTop = Math.max(bannerBottom, bannerBottom + (stageH - bannerBottom - unitH) / 2);
     } else {
       panelTop = bannerBottom + CLEARANCE;
     }
     controlDrawer.parentElement.style.top = panelTop + 'px';
     let bottomBand;
     if (logRightDocked) {
+      // Card width for the current column count (1-column minimum at 0
+      // moves; grows to 2/3/4/5 columns as the moves fill the columns):
+      // set inline when it changes, so the canvas right band below
+      // re-measures against the live card width. Width changes also happen
+      // on move add/clear — renderMoves runs a layout pass (applyCanvasRect)
+      // when docked so the cube re-centers without waiting for a resize.
+      const width = dockedLogWidth(dockedLogCols()) + 'px';
+      if (logWrapEl.style.width !== width) logWrapEl.style.width = width;
+      // The column capacity is height-driven: a vertical resize changes
+      // perCol and the existing .log-col split goes stale (a too-tall
+      // first column overflows the card). Re-split when the signature
+      // changes (renderMoves sets dockedSplitSig; the layout pass it runs
+      // re-enters here with a matching signature, so this terminates).
+      const sig = dockedLogPerCol() + 'x' + state.moves.length;
+      if (sig !== dockedSplitSig) renderMoves();
+      // Scroll fallback: the moves exceed the 5-column cap × per-column
+      // capacity (only possible below stage height ≈ 332 — see the
+      // .log-scroll CSS rule); the width stays at the 5-column cap.
+      logAreaEl.classList.toggle('log-scroll', state.moves.length > 5 * dockedLogPerCol());
       wrap.style.right = (CLEARANCE + logCardEl.getBoundingClientRect().width) + 'px';
       bottomBand = 0; // the log no longer occupies the stage's bottom edge
     } else {
+      logWrapEl.style.width = '';
+      logAreaEl.classList.remove('log-scroll');
+      // Undock: flatten any stale .log-col split left in #log-list — the
+      // bottom dock renders one flat group, but nothing else re-renders it.
+      // Mark the split as bottom-dock (so a re-dock re-splits: its sig is
+      // perCol × n) and re-render. renderMoves re-checks the .log-right
+      // class we just removed, flattens, and its trailing applyCanvasRect
+      // call is skipped (no longer docked) — no re-entry loop.
+      dockedSplitSig = 'bottom';
+      renderMoves();
       wrap.style.right = '0px';
       bottomBand = reservedLogBand();
     }

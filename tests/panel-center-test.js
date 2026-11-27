@@ -2,24 +2,37 @@
  * tests/panel-center-test.js — vertical placement of the control panel:
  *
  *   applyCanvasRect pins the drawer unit's wrapper top per stage height:
- *   stage height > 790  ->  the unit is vertically CENTERED in the empty
- *                           space between the top banner's bottom edge and
- *                           the Move Log wrapper's top edge (equal gaps),
- *                           clamped so it never overlaps the banner;
- *   stage height <= 790 ->  TOP-PINNED at banner bottom + 16px (the canvas
- *                           top band's live value), as before.
+ *   stage height > 784 (bottom-docked Move Log)  ->  the unit is vertically
+ *                           CENTERED in the empty space between the top
+ *                           banner's bottom edge and the Move Log wrapper's
+ *                           top edge (equal gaps), clamped so it never
+ *                           overlaps the banner;
+ *   stage height 784 >= H >= 635 (right-docked
+ *                           Move Log; the panel fits alongside it)  ->  the
+ *                           unit is CENTERED between the banner bottom and
+ *                           the STAGE bottom (the right-docked log no longer
+ *                           spans the bottom edge, so the whole stage height
+ *                           is available);
+ *   stage height < 635 (right-docked Move Log; the panel does not fit)  ->
+ *                           TOP-PINNED at banner bottom + 16px (the canvas
+ *                           top band's live value); it may overflow the
+ *                           stage bottom and clip — by decision, no guard.
  *
- *   The canvas rect must NOT follow the panel: in both branches its top
+ *   The canvas rect must NOT follow the panel: in all branches its top
  *   stays at banner bottom + 16px (verified via __RUBIKS__.canvasBands()).
  *
  *   Viewports (stage height = min(100dvh, 1276px), so it equals the
  *   viewport height below the cap):
- *     - 1440x900  (stage 900 > 790)  -> centering branch
- *     - 1440x700  (stage 700 <= 790) -> top-pin branch
- *     - 1440x1366 (stage capped at 1276 > 790) -> centering branch at the
+ *     - 1440x900  (stage 900 > 784)   -> bottom-dock centering branch
+ *     - 440x784   (stage 784 <= 784)  -> right dock; panel centered between
+ *                                       banner bottom and stage bottom
+ *     - 440x785   (stage 785 > 784)   -> bottom dock; panel centered between
+ *                                       banner bottom and log top (equal gaps)
+ *     - 1440x1366 (stage capped at 1276 > 784) -> centering branch at the
  *       height cap
- *   All are wide enough that the drawer starts OPEN, so no interaction is
- *   needed beyond waiting for ready + the startup decision to settle.
+ *   The 1440-wide scenarios start the drawer OPEN (stage width > 750); the
+ *   440-wide scenarios start it closed (only the top placement is asserted,
+ *   which is transform-invariant).
  *
  * Needs: Node, Playwright + Chromium.  Run: `node tests/panel-center-test.js`
  */
@@ -41,9 +54,14 @@ function findExecutable() {
 const TOL = 2; // px tolerance for "equal gaps" / "banner + 16" assertions
 
 const scenarios = [
-  { w: 1440, h: 900,  branch: 'center', desc: 'centering (stage 900 > 790)' },
-  { w: 1440, h: 700,  branch: 'top-pin', desc: 'top-pin (stage 700 <= 790)' },
-  { w: 1440, h: 1366, branch: 'center', desc: 'centering at height cap (stage 1276 > 790)' },
+  { w: 1440, h: 900,  branch: 'center-log',   docked: false, wide: true,
+    desc: 'bottom-dock centering (stage 900 > 784)' },
+  { w: 440,  h: 784,  branch: 'center-stage', docked: true,  wide: false,
+    desc: 'right dock: centered banner bottom <-> stage bottom (784 <= 784)' },
+  { w: 440,  h: 785,  branch: 'center-log',   docked: false, wide: false,
+    desc: 'bottom dock: centered banner bottom <-> log top (785 > 784)' },
+  { w: 1440, h: 1366, branch: 'center-log',   docked: false, wide: true,
+    desc: 'bottom-dock centering at height cap (stage 1276 > 784)' },
 ];
 
 // Stage-relative measurements, mirroring how applyCanvasRect computes them:
@@ -62,6 +80,7 @@ function measure(page) {
       stageH: sr.height,
       bannerBottom: bannerEl.getBoundingClientRect().bottom - sr.top,
       logTop: rel(logWrapEl.getBoundingClientRect()).top,
+      docked: logWrapEl.classList.contains('log-right'),
       unitTop: rel(unit.getBoundingClientRect()).top,
       unitH: unit.getBoundingClientRect().height,
       canvasTop: bands.top,
@@ -95,28 +114,39 @@ function measure(page) {
     //    unit height is the full open panel (card + tab), not just the tab.
     const open = await page.evaluate(() =>
       document.getElementById('control-drawer-tab').getAttribute('aria-expanded'));
-    check(tag(s) + 'drawer starts open', open === 'true', `aria-expanded=${open}`);
-    if (open !== 'true') { await page.close(); continue; }
+    if (s.wide) check(tag(s) + 'drawer starts open', open === 'true', `aria-expanded=${open}`);
+    if (s.wide && open !== 'true') { await page.close(); continue; }
 
     const m = await measure(page);
-    const gapAbove = m.unitTop - m.bannerBottom;
-    const gapBelow = m.logTop - (m.unitTop + m.unitH);
+    check(tag(s) + `log ${s.docked ? 'right-docked' : 'bottom-docked'} as expected`,
+      m.docked === s.docked, `docked=${m.docked}`);
 
     // 2) Branch-specific panel placement.
-    if (s.branch === 'center') {
-      check(tag(s) + 'equal gaps above/below unit',
+    if (s.branch === 'center-stage') {
+      // Right dock: equidistant between the banner bottom and the STAGE
+      // bottom (the right-docked log no longer spans the bottom edge).
+      const gapAbove = m.unitTop - m.bannerBottom;
+      const gapBelow = m.stageH - (m.unitTop + m.unitH);
+      check(tag(s) + 'equal gaps banner-bottom / stage-bottom',
         near(gapAbove, gapBelow),
         `above=${gapAbove.toFixed(1)}px below=${gapBelow.toFixed(1)}px unitH=${m.unitH.toFixed(1)}px`);
       check(tag(s) + 'unit does not overlap banner',
         m.unitTop >= m.bannerBottom - TOL,
         `unitTop=${m.unitTop.toFixed(1)}px bannerBottom=${m.bannerBottom.toFixed(1)}px`);
     } else {
-      check(tag(s) + 'unit top-pinned at banner + 16',
-        near(m.unitTop - m.bannerBottom, 16),
-        `unitTop - bannerBottom = ${(m.unitTop - m.bannerBottom).toFixed(1)}px`);
+      // Bottom dock: equidistant between the banner bottom and the log
+      // wrapper's top edge (equal gaps), clamped off the banner.
+      const gapAbove = m.unitTop - m.bannerBottom;
+      const gapBelow = m.logTop - (m.unitTop + m.unitH);
+      check(tag(s) + 'equal gaps above/below unit',
+        near(gapAbove, gapBelow),
+        `above=${gapAbove.toFixed(1)}px below=${gapBelow.toFixed(1)}px unitH=${m.unitH.toFixed(1)}px`);
+      check(tag(s) + 'unit does not overlap banner',
+        m.unitTop >= m.bannerBottom - TOL,
+        `unitTop=${m.unitTop.toFixed(1)}px bannerBottom=${m.bannerBottom.toFixed(1)}px`);
     }
 
-    // 3) The canvas rect is unaffected: its top stays at banner + 16 in BOTH
+    // 3) The canvas rect is unaffected: its top stays at banner + 16 in ALL
     //    branches, whether the panel moves or not.
     check(tag(s) + 'canvas top stays at banner + 16',
       near(m.canvasTop, m.bannerBottom + 16) && near(m.canvasTopBand, m.bannerBottom + 16),

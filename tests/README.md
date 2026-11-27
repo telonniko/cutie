@@ -22,8 +22,8 @@ any failure), so they double as smoke tests and as CI gates.
 | `press-test.js` | Keyboard-shortcut tests | Node, Playwright + Chromium | `node tests/press-test.js` |
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
 | `drawers-test.js` | Control-drawer width-threshold tests — 18 checks: startup state (open > 750px wide, closed ≤ 750px), the exact 750/751 boundary, Scramble/Solve auto-hide | Node, Playwright + Chromium | `node tests/drawers-test.js` |
-| `panel-center-test.js` | Control-panel vertical placement — 7 checks: centered when the stage is taller than 790px, top-pinned at banner + 16px otherwise; the canvas top never moves with the panel | Node, Playwright + Chromium | `node tests/panel-center-test.js` |
-| `log-dock-test.js` | Right-docked Move Log band — 59 checks: in-band (636/783, wide 1440×700) the log docks right (card top banner + 16, 16px insets, 58px wide, vertical column, canvas right inset 16 + card width, bottom reservation 0); out-of-band (634/635/784/785) the bottom dock stands (784 pins the reserved-band top); a 25-move column scrolls internally with the current move in view; resize re-docks/undocks | Node, Playwright + Chromium | `npm run test:logdock` or `node tests/log-dock-test.js` |
+| `panel-center-test.js` | Control-panel vertical placement — 18 checks: centered between the banner and the Move Log top when the stage is taller than 784px (incl. the height cap), centered between the banner and the stage bottom at 784 (right dock), the 785 boundary in the bottom-dock branch; the canvas top never moves with the panel | Node, Playwright + Chromium | `node tests/panel-center-test.js` |
+| `log-dock-test.js` | Right-docked Move Log band — 142 checks: in-band (stage height ≤ 784, no lower bound — 400/635/700, wide 1440×700) the log docks right (card top banner + 16, 16px insets, headerless, canvas right inset 16 + card width, bottom reservation 0); out-of-band (785) the bottom dock stands; columns grow 1→5 with widths 58→194 (five populated scenarios), no scroll while it fits, internal scroll at the 5-column cap with the last button reachable; 12px symmetric edge padding; 700→640 column re-split; 700→800→700 undock re-flattens the split; panel placement at 700/784/600 | Node, Playwright + Chromium | `npm run test:logdock` or `node tests/log-dock-test.js` |
 | `step-buttons-test.js` | "← Step" / "Step →" enable/disable tracking with the cursor | Node, Playwright + Chromium | `npm run test:step` or `node tests/step-buttons-test.js` |
 | `move-limits-test.js` | Move Log 36-move cap: 37th turn refused with a toast, undo frees a slot, an over-36-move solve is refused (log + cube untouched), scramble still 18–24 | Node, Playwright + Chromium | `node tests/move-limits-test.js` |
 
@@ -141,51 +141,74 @@ test hook.
 
 ## panel-center-test.js
 
-Playwright-driven tests for **the control panel's vertical placement** (7
+Playwright-driven tests for **the control panel's vertical placement** (18
 checks). `applyCanvasRect` pins the drawer unit's wrapper top per stage
-height: stage height **> 790px** → the unit (card + tab) is **vertically
-centered** between the top banner's bottom edge and the Move Log wrapper's
-top edge (equal gaps, clamped so it never overlaps the banner); stage height
-**≤ 790px** → **top-pinned** at banner + 16px. The canvas rect must **not**
-follow the panel: in both branches its top stays at banner + 16px. Two
-viewports are tested — 1440×900 (centering branch) and 1440×700 (top-pin
-branch); both are wide enough that the drawer starts open, so no interaction
-is needed.
+height, in three branches keyed on the log's dock (the old single 790px
+threshold is deleted): stage height **> 784px** (bottom-docked log) → the
+unit (card + tab) is **vertically centered** between the top banner's bottom
+edge and the Move Log wrapper's top edge (equal gaps, clamped so it never
+overlaps the banner); stage height **784 or below** (right-docked log) and
+**≥ 635px** → the unit is **centered** between the banner bottom and the
+**stage bottom** (the right-docked log no longer spans the bottom edge, so
+the whole stage height is available); **below 635** → **top-pinned** at
+banner + 16px. The canvas rect must **not** follow the panel: in every
+branch its top stays at banner + 16px. Four viewports are tested — 1440×900
+and 1440×1366 (stage capped at 1276 — the bottom-dock centering branch,
+incl. the height cap), 440×784 (the boundary in the right-dock branch) and
+440×785 (the boundary in the bottom-dock branch); the 1440-wide scenarios
+start the drawer open, the 440-wide ones closed (only the top placement is
+asserted, which is transform-invariant).
 
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.
 
 ## log-dock-test.js
 
-Playwright-driven tests for **the right-docked Move Log band** (59 checks).
+Playwright-driven tests for **the right-docked Move Log band** (142 checks).
 `applyCanvasRect` re-docks the Move Log (the same card — no duplicate element)
 from the stage's bottom edge to its **right edge** in a height-only,
-width-independent band — stage height **> 635px and ≤ 783.5px** — where the
-card sits 16px below the banner bottom, 16px from the stage's right edge and
-bottom, 58px wide, as a single vertical column of 32px move-buttons (2px gaps,
-31px pitch) that scrolls internally (the 45% cap does not apply in-band),
-while the canvas wrap's right inset becomes 16px + the card's live width and
-its bottom reservation drops to 0. Out-of-band (below 635 or above 783.5) the
-bottom dock stands. All placement is asserted through real rects,
-stage-relative (the canvas wrap via `__RUBIKS__.canvasBands()`, the card and
-buttons via `getBoundingClientRect()`). Scenarios:
+width-independent band — stage height **≤ 784px** (inclusive, no lower bound):
+the card sits 16px below the banner bottom, 16px from the stage's right edge
+and bottom, **headerless** (the header row is hidden in-band, still in the
+DOM), and its width is JS-driven — 34·cols + 24 = 58/92/126/160/194px for
+1–5 columns. The buttons fill **columns top→bottom** (explicit `.log-col`
+wrappers, 32px buttons, 2px gaps, 31px pitch, 12px symmetric edge padding),
+`perCol = floor(#move-log clientHeight / 31)` (clientHeight = stageH − 84),
+`cols = min(max(ceil(moves / perCol), 1), 5)` — 1 column at 0 moves, capped
+at 5. While the moves fit there is **no scrollbar** (`overflow: hidden`);
+the internal vertical scroll fallback (`.log-scroll`) engages only when
+`moves > 5 × perCol` — below a ≈332px stage — with the width capped at the
+5-column 194px. The canvas wrap's right inset becomes 16px + the card's live
+width (re-measured on column-count change) and its bottom reservation drops
+to 0. Out-of-band (above 784) the bottom dock stands. All placement is
+asserted through real rects, stage-relative (the canvas wrap via
+`__RUBIKS__.canvasBands()`, the card, columns and buttons via
+`getBoundingClientRect()`). Scenarios:
 
-- band boundaries, empty log: 440×634 and 440×635 → **bottom dock** (the lower
-  bound is strict — `H > 635`); 440×636 and 440×783 → **right dock** (636 just
-  inside, 783 at the band max — card top at banner + 16, 16px insets, 58px
-  width, canvas right inset ≈ 16 + 58, bottom reservation 0, empty hint
-  hidden); 440×784 and 440×785 → **bottom dock** — 784 is the tightest
-  out-of-band case and pins the boundary via the reserved-band top (≈
-  stageH − 164.5 ± 0.5).
-- height-only rule: 1440×700 (a wide stage) → **right dock** (the band is
-  height-only, width-independent).
-- populated column: 440×700 with 25 keyboard `U` turns at 3× speed → a single
-  vertical column (32px buttons, no wrap), `#move-log` scrolls internally
-  (scrollHeight > clientHeight), the current move auto-scrolls into view, the
-  empty hint stays hidden.
-- resize crossing: 440×700 → 440×800 → 440×700 → the log re-docks to the
-  right, undocks to the bottom, and re-docks again with the existing snap (no
-  animation for the log dock).
+- band boundary: 440×784 → **right dock** (784 ≤ 784, inclusive — the tightest
+  in-band case, card top at banner + 16, 16px insets, 1-column minimum width,
+  canvas right inset ≈ 16 + 58, bottom reservation 0, header hidden, empty
+  hint hidden); 440×785 → **bottom dock** (header visible again).
+- no lower bound: 440×635 and 440×400 → **right dock** (the old 635 lower
+  bound is deleted; 400 is the former degenerate case).
+- height-only rule: 1440×700 (a wide stage) → **right dock**.
+- column growth (populated log): 440×700 with 22 moves → perCol 19 → 2
+  columns, 92px card; 440×636 with 36 → perCol 17 → 3 columns, 126px;
+  440×450 with 36 → perCol 11 → 4 columns, 160px; 440×400 with 36 → perCol
+  10 → 4 columns, 160px, no scroll (36 ≤ 4×10); 440×320 with 36 → perCol 7 →
+  5-column cap, 194px, scroll engaged, last button reachable — each asserting
+  top→bottom fill, 32px buttons, 12px symmetric edge padding, no scroll
+  while it fits, and canvas right = 16 + live card width with bottom
+  reservation 0.
+- width transition: 440×700 → 440×640 with 36 moves → re-measures from 2
+  columns (92px) to 3 columns (126px) — the explicit `.log-col` re-split, the
+  canvas right band re-measured and the cube re-centered.
+- undock with moves: 440×700 → 440×800 → 440×700 with 36 moves → undock
+  re-flattens the `.log-col` split back to wrapping rows (the regression test
+  for stale splits), re-dock re-splits it (back to 2 columns, 92px).
+- panel placement: 440×700 and 440×784 → centered between the banner bottom
+  and the stage bottom (H ≥ 635); 440×600 → top-pinned at banner + 16
+  (clipping the stage bottom — by decision, no guard).
 
 Drives the real `index.html` in headless Chromium via the
 `window.__RUBIKS__` test hook.
