@@ -113,6 +113,9 @@
     aspect-ratio: 16 / 10;
     overflow: hidden;
   }
+  /* The narrow-tall shot is a 440x700 render — the box matches the image's
+     aspect ratio exactly, so object-fit: cover crops nothing. */
+  .thumb.tall { aspect-ratio: 440 / 700; }
   .thumb img {
     width: 100%;
     height: 100%;
@@ -183,8 +186,10 @@
       <h1>Screenshot Gallery</h1>
       <p class="sub">
         A single-file, client-side 3D Rubik's Cube solver powered by
-        Three.js and cubejs. The three shots below trace a full
-        solve — from a clean cube, through a scramble, back to solved.
+        Three.js and cubejs. The first three shots trace a full solve — from
+        a clean cube, through a scramble, back to solved — and the fourth
+        shows the narrow-tall layout with the Move Log re-docked to the
+        right edge.
       </p>
     </header>
 
@@ -235,6 +240,25 @@
             <strong>Move Log</strong> at the bottom shows the full solution as
             move-buttons in wrapping rows (they wrap at the panel width), the control panel drawer
             still open.
+          </p>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a class="thumb tall" href="narrow-tall.png" target="_blank" rel="noopener">
+          <span class="step">Narrow-Tall</span>
+          <img src="narrow-tall.png" alt="Cutie in a narrow-tall 440x700 viewport: the Move Log re-docked to the right edge as a vertical column of move-buttons, the cube centered in the remaining space, the control panel closed with its tab peeking in from the left" loading="lazy" />
+        </a>
+        <figcaption>
+          <h2><span class="dot scrambled"></span>Narrow-Tall (440×700)</h2>
+          <p>
+            A 440×700 viewport puts the stage inside the 635–783.5px
+            <strong>narrow-tall band</strong>, so the <strong>Move Log</strong>
+            re-docks to the <strong>right edge</strong>: a vertical column of
+            move-buttons (16px clearances, scrolling internally) with the cube
+            centered in the remaining space. At 440px wide the stage is ≤ 750px,
+            so the control panel starts <strong>closed</strong> — its tab peeks
+            in from the left. Above or below the band the log bottom-docks.
           </p>
         </figcaption>
       </figure>

@@ -23,6 +23,7 @@ any failure), so they double as smoke tests and as CI gates.
 | `click-test.js` | Mouse-event / click tests | Node, Playwright + Chromium | `node tests/click-test.js` |
 | `drawers-test.js` | Control-drawer width-threshold tests — 18 checks: startup state (open > 750px wide, closed ≤ 750px), the exact 750/751 boundary, Scramble/Solve auto-hide | Node, Playwright + Chromium | `node tests/drawers-test.js` |
 | `panel-center-test.js` | Control-panel vertical placement — 7 checks: centered when the stage is taller than 790px, top-pinned at banner + 16px otherwise; the canvas top never moves with the panel | Node, Playwright + Chromium | `node tests/panel-center-test.js` |
+| `log-dock-test.js` | Right-docked Move Log band — 59 checks: in-band (636/783, wide 1440×700) the log docks right (card top banner + 16, 16px insets, 58px wide, vertical column, canvas right inset 16 + card width, bottom reservation 0); out-of-band (634/635/784/785) the bottom dock stands (784 pins the reserved-band top); a 25-move column scrolls internally with the current move in view; resize re-docks/undocks | Node, Playwright + Chromium | `npm run test:logdock` or `node tests/log-dock-test.js` |
 | `step-buttons-test.js` | "← Step" / "Step →" enable/disable tracking with the cursor | Node, Playwright + Chromium | `npm run test:step` or `node tests/step-buttons-test.js` |
 | `move-limits-test.js` | Move Log 36-move cap: 37th turn refused with a toast, undo frees a slot, an over-36-move solve is refused (log + cube untouched), scramble still 18–24 | Node, Playwright + Chromium | `node tests/move-limits-test.js` |
 
@@ -44,7 +45,7 @@ these, since they are dev-only.
 - `cube-core-test.js` and `cursor-test.js` need **`cubejs`** (a devDependency,
   used only by the tooling — the app itself loads cubejs from a CDN). They run
   the cube-core math in a fresh Node VM context, so they need no browser.
-- `press-test.js`, `click-test.js`, `drawers-test.js`, and
+- `press-test.js`, `click-test.js`, `drawers-test.js`, `log-dock-test.js`, and
   `panel-center-test.js` need **Playwright** and a headless Chromium. They drive the real `index.html` via
   the `window.__RUBIKS__` test hook.
 
@@ -154,6 +155,41 @@ is needed.
 Drives the real `index.html` in headless Chromium via the `window.__RUBIKS__`
 test hook.
 
+## log-dock-test.js
+
+Playwright-driven tests for **the right-docked Move Log band** (59 checks).
+`applyCanvasRect` re-docks the Move Log (the same card — no duplicate element)
+from the stage's bottom edge to its **right edge** in a height-only,
+width-independent band — stage height **> 635px and ≤ 783.5px** — where the
+card sits 16px below the banner bottom, 16px from the stage's right edge and
+bottom, 58px wide, as a single vertical column of 32px move-buttons (2px gaps,
+31px pitch) that scrolls internally (the 45% cap does not apply in-band),
+while the canvas wrap's right inset becomes 16px + the card's live width and
+its bottom reservation drops to 0. Out-of-band (below 635 or above 783.5) the
+bottom dock stands. All placement is asserted through real rects,
+stage-relative (the canvas wrap via `__RUBIKS__.canvasBands()`, the card and
+buttons via `getBoundingClientRect()`). Scenarios:
+
+- band boundaries, empty log: 440×634 and 440×635 → **bottom dock** (the lower
+  bound is strict — `H > 635`); 440×636 and 440×783 → **right dock** (636 just
+  inside, 783 at the band max — card top at banner + 16, 16px insets, 58px
+  width, canvas right inset ≈ 16 + 58, bottom reservation 0, empty hint
+  hidden); 440×784 and 440×785 → **bottom dock** — 784 is the tightest
+  out-of-band case and pins the boundary via the reserved-band top (≈
+  stageH − 164.5 ± 0.5).
+- height-only rule: 1440×700 (a wide stage) → **right dock** (the band is
+  height-only, width-independent).
+- populated column: 440×700 with 25 keyboard `U` turns at 3× speed → a single
+  vertical column (32px buttons, no wrap), `#move-log` scrolls internally
+  (scrollHeight > clientHeight), the current move auto-scrolls into view, the
+  empty hint stays hidden.
+- resize crossing: 440×700 → 440×800 → 440×700 → the log re-docks to the
+  right, undocks to the bottom, and re-docks again with the existing snap (no
+  animation for the log dock).
+
+Drives the real `index.html` in headless Chromium via the
+`window.__RUBIKS__` test hook.
+
 ## step-buttons-test.js
 
 Playwright-driven tests for the **"← Step" / "Step →" enable/disable** state. The
@@ -187,7 +223,10 @@ capture: it is a **capture/sync bridge, not a state driver** — it no longer
 applies moves, so the captures reflect what the app actually does. It provides
 `ready` / `status` getters, `setCamera`, `renderFrame` (raw RGBA pixels from the
 GL back buffer, bypassing the unreliable 2D-canvas sync in headless Chromium),
-`setPixelRatio`, `syncLog` to render the Move Log instantly, `isSolved`, and
+`setPixelRatio`, `syncLog` to render the Move Log instantly, `canvasBands`
+(the empty-space canvas rect plus the measured bands — `right` and `bottom` are
+band-aware: the right inset is 16 + the docked card's width and the bottom
+reservation is 0 while the log is right-docked), `isSolved`, and
 `waitUntilIdle`. State changes go through the real UI (clicking the
 Scramble/Solve buttons), so tests reflect the app's current behavior. The
 Playwright tests above rely on it.

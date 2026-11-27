@@ -78,7 +78,10 @@ The WebGL canvas no longer backs the whole stage: it fills exactly the
 **empty space** — the stage minus the top banner band, the left drawer band,
 and the bottom Move Log band, each leaving a **16px clearance** so the cube
 never sits under chrome (the bottom band is the Move Log's *reserved* height,
-computed as if it had exactly 3 button rows, not its dynamic height). The cube
+computed as if it had exactly 3 button rows, not its dynamic height; in the
+narrow-tall band the log docks to the right edge instead — the right band is
+then 16px + the card's width and the bottom band drops to 0, see the Move Log
+section below). The cube
 always projects to the exact center of its canvas, so sizing the canvas to the
 empty rectangle keeps the **cube centered in the empty space at every
 viewport size**. When the drawer **closes**, a per-frame loop tracks the
@@ -98,20 +101,30 @@ The cube itself is **view-only** — turns come from the **face buttons** and
   (**Solved**, **Scrambled**, **Turning…**, **Solving…**) and a live **Moves**
   counter.
 
-### Move Log (bottom edge) — an always-visible panel
-The Move Log is a panel **fixed at the bottom of the stage, always visible** —
-no drawer, no tab, no toggle, no keyboard shortcut. The wrapper spans the
-stage's bottom width minus a **4px gap at each edge** (`left-1` / `right-1`),
-and the glassy card **fills that width** — title row and moves alike — with the
-canvas/cube untouched:
+### Move Log (bottom edge — or right edge) — an always-visible panel
+The Move Log is a panel that is **always visible** — no drawer, no tab, no
+toggle, no keyboard shortcut. By default it is **fixed at the bottom of the
+stage**: the wrapper spans the stage's bottom width minus a **4px gap at each
+edge** (`left-1` / `right-1`), and the glassy card **fills that width** —
+title row and moves alike — with the canvas/cube untouched. In the
+**narrow-tall band** — stage height **> 635px and ≤ 783.5px** — the same card
+**re-docks to the right edge** instead: a single vertical column of the same
+move-buttons with 16px clearances below the banner, at the right edge, and at
+the stage bottom, scrolling internally, and the canvas re-sizes around it so
+the **cube re-centers in the remaining space**. Above or below the band the
+bottom dock stands:
 - **Header** — "Move Log" title plus a live **move-count** (e.g. `12 moves`).
 - **Move buttons** — the executed moves shown as a **row of move-buttons that
   wraps**, one per token (`R`, `U'`, `F2`, …), styled to match the face buttons.
   Each button is a **fixed 32px wide**, so the layout is identical at every
   screen size: buttons **auto-wrap at the panel's width**, centered, adding
-  rows as moves are added — no horizontal overflow.
+  rows as moves are added — no horizontal overflow. (In the right-docked band
+  the same buttons form a single vertical column — 32px buttons, 2px gaps —
+  instead of wrapping rows.)
 - **Scroll** — the card grows with rows but caps at 45% of the **stage height**
-  (a stage-relative cap, so it scales with the stage), then scrolls internally; the button for the move being turned
+  (a stage-relative cap, so it scales with the stage), then scrolls internally
+  (in the right-docked band the 45% cap does not apply — the column fills the
+  card and scrolls internally there); the button for the move being turned
   **highlights first, then the face turns, then the next one** — moves before
   the current step show as done, moves after it as pending — and the current
   button auto-scrolls into view.
