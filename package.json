@@ -7,6 +7,7 @@
     "verify": "node tests/cube-core-test.js",
     "verify:cursor": "node tests/cursor-test.js",
     "test:drawer": "node tests/drawers-test.js",
+    "test:logdock": "node tests/log-dock-test.js",
     "test:step": "node tests/step-buttons-test.js",
     "screenshot": "node tools/render-screenshot.js"
   },
